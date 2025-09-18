@@ -7,6 +7,7 @@ on:
       - 'v*'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -53,9 +54,9 @@ jobs:
       run: |
         BUILD_DIR="epdiy-epub/project/build_${{ matrix.target }}_hcpu"
         
-        # Copy all .bin, .json, .ini, .bat files while preserving directory structure
+        # Copy all .bin, .json, .ini files while preserving directory structure
         cd "$BUILD_DIR"
-        find . -type f \( -name "*.bin" -o -name "*.json" -o -name "*.ini" -o -name "*.bat" \) -exec cp --parents {} "../../../release/${{ matrix.target }}/" \;
+        find . -type f \( -name "*.bin" -o -name "*.json" -o -name "*.ini" \) -exec cp --parents {} "../../../release/${{ matrix.target }}/" \;
         
         cd ../../..
         
@@ -90,12 +91,9 @@ jobs:
           - `bootloader.bin` - Bootloader binary
           - `ftab.bin` - Flash table binary  
           - `*.bin` - Main application binaries
-          - `rtthread.elf` - Debug symbols (if available)
           - `fs_root.bin` - File system image (if available)
           
           ### Installation
           1. Extract the zip file for your target board
-          2. Use the SiFli download tool or uart_download.bat script
-          3. Flash the binaries to your EPD reader device
+          2. Flash the binaries to your EPD reader device
           
-          For detailed flashing instructions, please refer to the [project documentation](https://github.com/OpenSiFli/epd_reader/blob/main/README.md).
