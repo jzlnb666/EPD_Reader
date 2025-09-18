@@ -54,6 +54,9 @@ jobs:
       run: |
         BUILD_DIR="epdiy-epub/project/build_${{ matrix.target }}_hcpu"
         
+        # Create release directory first
+        mkdir -p "release/${{ matrix.target }}"
+        
         # Copy all .bin, .json, .ini files while preserving directory structure
         cd "$BUILD_DIR"
         find . -type f \( -name "*.bin" -o -name "*.json" -o -name "*.ini" \) -exec cp --parents {} "../../../release/${{ matrix.target }}/" \;
