@@ -85,10 +85,18 @@
             }, 
             {
                 "offset": "0x00E00000",
-                "max_size": "0x00100000",
+                "max_size": "0x00C0000",
                 "img": "fs_root", 
                 "tags": [
                     "FS_REGION"
+                ]
+            },
+            {
+                "offset": "0x00EC0000",
+                "max_size": "0x00020000",
+                "img": "wave_table", 
+                "tags": [
+                    "CUSTOM_EPD_WAVE_TABLE"
                 ]
             }
         ]
