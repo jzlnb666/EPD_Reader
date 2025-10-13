@@ -158,18 +158,18 @@ void epd_wave_table_fill_lut(uint32_t *p_epic_lut, uint32_t frame_num)
 const EPD_TimingConfig *epd_get_timing_config(void)
 {
     static const EPD_TimingConfig timing_config = {
-        .sclk_freq = 24,
-        .SDMODE = 0,
-        .LSL = 0,
-        .LBL = 0,
-        .LDL = LCD_HOR_RES_MAX/4,
-        .LEL = 1,
+        .sclk_freq = 24,  //像素时钟（列时钟） 单位 MHz
+        .SDMODE = 0, //SD模式选择
+        .LSL = 0,    // 行开始信号需要的clock数
+        .LBL = 0,    // 行起始的空clock数
+        .LDL = LCD_HOR_RES_MAX/4,  //有效数据的clock数，因为是2bit，8数据线所以需要除以4
+        .LEL = 1,   //行结束的空clock数
 
-        .fclk_freq = 83,
-        .FSL = 1,
-        .FBL = 3,
-        .FDL = LCD_VER_RES_MAX,
-        .FEL = 5,
+        .fclk_freq = 83, //行时钟，单位 KHz
+        .FSL = 1,  //起始行信号需要的clock数量
+        .FBL = 3,  //起始空行的数量
+        .FDL = LCD_VER_RES_MAX,  //有效数据的行数
+        .FEL = 5,   //结束空行的数量
     };
 
     return &timing_config;

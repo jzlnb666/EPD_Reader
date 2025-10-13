@@ -43,5 +43,10 @@ fs_bin=FileSystemBuild( "../disk", env)
 AddCustomImg("fs_root",bin=[fs_bin])
 
 
+# Add EPD wave form image bin
+if GetDepend('EPD_WAVEFORM_USE_BIN'):
+    epd_wave_bin="../waveform/epd_waveform.bin"
+    AddCustomImg("wave_table",bin=[epd_wave_bin])
+
 # Generate download .bat script
 GenDownloadScript(env)

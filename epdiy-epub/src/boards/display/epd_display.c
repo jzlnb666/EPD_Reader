@@ -65,7 +65,7 @@
 
 #define DISPLAY_LINE_CLOCKS   (LCD_HOR_RES_MAX/4)     //每列刷新所需次数，362*4像素
 #define DISPLAY_ROWS   LCD_VER_RES_MAX
-#define DISPLAY_LINE_CLOCKS_ALIGNED  ((DISPLAY_LINE_CLOCKS + 3) & ~0x03) // align to 4 bytes
+#define DISPLAY_LINE_CLOCKS_ALIGNED  ((DISPLAY_LINE_CLOCKS + 7) & ~0x07) // align to 8 bytes, because converted double 32bit data each time in funcion epic_buf_to_wave_form_buffer
 
 
 static LCDC_InitTypeDef lcdc_int_cfg =
