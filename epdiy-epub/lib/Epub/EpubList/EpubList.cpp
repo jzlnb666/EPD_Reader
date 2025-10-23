@@ -1,4 +1,8 @@
 #include "EpubList.h"
+#include <string.h>
+
+
+extern uint8_t touch_enable;
 
 #ifndef UNIT_TEST
   #include <rtdbg.h>
@@ -12,16 +16,46 @@
 static const char *TAG = "PUBLIST";
 
 #define PADDING 20
-#define EPUBS_PER_PAGE 5
+#define EPUBS_PER_PAGE 4  
+#define BOTTOM_AREA_HEIGHT 80 
+#define BOTTOM_AREA_ITEM_INDEX -1  
 
 void EpubList::next()
 {
-  state.selected_item = (state.selected_item + 1) % state.num_epubs;
+  // 如果当前选中的是最后一个电子书项，则切换到底部区域
+  if (state.selected_item == state.num_epubs - 1) 
+  {
+    state.selected_item = BOTTOM_AREA_ITEM_INDEX;
+  } 
+  else if (state.selected_item == BOTTOM_AREA_ITEM_INDEX) 
+  {
+    // 如果当前已在底部区域，则回到第一个电子书项
+    state.selected_item = 0;
+  } 
+  else 
+  {
+    // 正常切换到下一个电子书项
+    state.selected_item = (state.selected_item + 1) % state.num_epubs;
+  }
 }
 
 void EpubList::prev()
 {
-  state.selected_item = (state.selected_item - 1 + state.num_epubs) % state.num_epubs;
+  if (state.selected_item == 0) 
+  {
+    // 如果当前是第一个电子书项，则切换到底部区域
+    state.selected_item = BOTTOM_AREA_ITEM_INDEX;
+  } 
+  else if (state.selected_item == BOTTOM_AREA_ITEM_INDEX) 
+  {
+    // 如果当前已在底部区域，则切换到最后一个电子书项
+    state.selected_item = state.num_epubs > 0 ? state.num_epubs - 1 : 0;
+  } 
+  else 
+  {
+    // 正常切换到上一个电子书项
+    state.selected_item = (state.selected_item - 1 + state.num_epubs) % state.num_epubs;
+  }
 }
 
 bool EpubList::load(const char *path)
@@ -116,8 +150,8 @@ void EpubList::render()
   ulog_d(TAG, "Rendering EPUB list");
   // what page are we on?
   int current_page = state.selected_item / EPUBS_PER_PAGE;
-  // draw a page of epubs
-  int cell_height = renderer->get_page_height() / EPUBS_PER_PAGE;
+  // 计算单元格高度，减去底部区域的高度
+  int cell_height = (renderer->get_page_height() - BOTTOM_AREA_HEIGHT) / EPUBS_PER_PAGE;
   ulog_d(TAG, "Cell height is %d", cell_height);
   int start_index = current_page * EPUBS_PER_PAGE;
   int ypos = 0;
@@ -191,4 +225,45 @@ void EpubList::render()
   }
   state.previous_selected_item = state.selected_item;
   state.previous_rendered_page = current_page;
+  
+  // touch 开关底部区域
+  int screen_height = renderer->get_page_height();
+  int bottom_area_y = screen_height - BOTTOM_AREA_HEIGHT - 40;  
+  int rect_width = renderer->get_page_width() - 2 * PADDING;
+  int rect_height = BOTTOM_AREA_HEIGHT;
+  if (bottom_area_y < 0) 
+  {
+    bottom_area_y = 0;
+    rect_height = screen_height - 5;
+  }
+  renderer->fill_rect(PADDING, bottom_area_y, rect_width, rect_height, 255);
+  const char* text = (touch_enable == 1) ? "Touch : On" : "Touch : Off";
+  int text_y = bottom_area_y + 5;  
+  int text_length = strlen(text);
+  int estimated_text_width = text_length * 12; 
+  int text_x = PADDING + (rect_width - estimated_text_width) / 2;
+  renderer->draw_text(text_x, text_y, text, 0);
+  
+  if (state.selected_item == BOTTOM_AREA_ITEM_INDEX) 
+  {
+    int border_thickness = 3;  
+    for (int i = 0; i < border_thickness; i++) 
+    {
+      renderer->draw_rect(PADDING + i, bottom_area_y + i, 
+                         rect_width - 2 * i, 
+                         rect_height - 2 * i, 0);
+    }
+  } else 
+  {
+    if (state.previous_selected_item == BOTTOM_AREA_ITEM_INDEX) 
+    {
+      int border_thickness = 3;
+      for (int i = 0; i < border_thickness; i++) 
+      {
+        renderer->draw_rect(PADDING + i, bottom_area_y + i, 
+                           rect_width - 2 * i, 
+                           rect_height - 2 * i, 255);
+      }
+    }
+  }
 }

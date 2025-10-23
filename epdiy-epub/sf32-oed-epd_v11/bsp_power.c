@@ -20,20 +20,34 @@ void BSP_GPIO_Set(int pin, int val, int is_porta)
 
 __WEAK void BSP_PowerDownCustom(int coreid, bool is_deep_sleep)
 {
-    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO3_3V3, false, false);
-    BSP_GPIO_Set(MPI2_POWER_PIN, 0, 1);
+
 }
 
 __WEAK void BSP_PowerUpCustom(bool is_deep_sleep)
 {
-    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO3_3V3, true, false);
-    BSP_GPIO_Set(MPI2_POWER_PIN, 1, 1);
+    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO3_3V3, /*enable=*/true, /*wait=*/true);//VDD33_VOUT2
+    BSP_GPIO_Set(32, 1, 1); // TP Power
 }
 
 
+extern void *rt_flash_get_handle_by_addr(uint32_t addr);
 void BSP_Power_Up(bool is_deep_sleep)
 {
     BSP_PowerUpCustom(is_deep_sleep);
+#ifdef SOC_BF0_HCPU
+    if (!is_deep_sleep)
+    {
+#ifdef BSP_USING_PSRAM1
+        bsp_psram_exit_low_power("psram1");
+#endif /* BSP_USING_PSRAM1 */
+#ifdef BSP_USING_NOR_FLASH2
+        FLASH_HandleTypeDef *flash_handle;
+        flash_handle = (FLASH_HandleTypeDef *)rt_flash_get_handle_by_addr(MPI2_MEM_BASE);
+        HAL_FLASH_RELEASE_DPD(flash_handle);
+        HAL_Delay_us(80);
+#endif
+    }
+#endif  /* SOC_BF0_HCPU */
 }
 
 
@@ -41,6 +55,20 @@ void BSP_Power_Up(bool is_deep_sleep)
 void BSP_IO_Power_Down(int coreid, bool is_deep_sleep)
 {
     BSP_PowerDownCustom(coreid, is_deep_sleep);
+#ifdef SOC_BF0_HCPU
+    if (coreid == CORE_ID_HCPU)
+    {
+#ifdef BSP_USING_PSRAM1
+        bsp_psram_enter_low_power("psram1");
+#endif /* BSP_USING_PSRAM1 */
+#ifdef BSP_USING_NOR_FLASH2
+        FLASH_HandleTypeDef *flash_handle;
+        flash_handle = (FLASH_HandleTypeDef *)rt_flash_get_handle_by_addr(MPI2_MEM_BASE);
+        HAL_FLASH_DEEP_PWRDOWN(flash_handle);
+        HAL_Delay_us(3);
+#endif
+    }
+#endif  /* SOC_BF0_HCPU */
 }
 
 void BSP_SDIO_Power_Up(void)

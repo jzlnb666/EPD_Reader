@@ -55,7 +55,7 @@ rt_err_t SF32_TouchControls::tp_rx_indicate(rt_device_t dev, rt_size_t size)
     
     return RT_EOK;
 }
-
+extern uint8_t touch_enable;
 SF32_TouchControls::SF32_TouchControls(Renderer *renderer, ActionCallback_t on_action)
   : on_action(on_action), renderer(renderer)
 {
@@ -66,6 +66,10 @@ SF32_TouchControls::SF32_TouchControls(Renderer *renderer, ActionCallback_t on_a
           /*Setup rx indicate callback*/
           tp_device->user_data = (void *)this;
           rt_device_set_rx_indicate(tp_device, tp_rx_indicate);
+      }
+      if(!touch_enable)
+      {
+        rt_device_control(tp_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
       }
 }
 
@@ -90,6 +94,26 @@ void SF32_TouchControls::render(Renderer *renderer)
   renderer->set_margin_top(35);
 }
 
+void SF32_TouchControls::powerOffTouch()
+{
+   if (tp_device) 
+    {
+      rt_device_control(tp_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
+      //rt_kprintf("触控已关闭\n");
+    } else {
+        rt_kprintf("没找到触控设备\n");
+    }
+}
+
+void SF32_TouchControls::powerOnTouch()
+{
+   if (tp_device) {
+      rt_device_control(tp_device, RTGRAPHIC_CTRL_POWERON, NULL);
+       //rt_kprintf("触控已开启\n");
+    } else {
+        rt_kprintf("没找到触控设备\n");
+    }
+}
 void SF32_TouchControls::renderPressedState(Renderer *renderer, UIAction action, bool state)
 {
   renderer->set_margin_top(0);

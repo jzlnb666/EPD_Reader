@@ -158,6 +158,7 @@ static uint32_t LCD_ReadID(LCDC_HandleTypeDef *hlcdc)
 static void LCD_DisplayOn(LCDC_HandleTypeDef *hlcdc)
 {
     /* Display On */
+    
 }
 
 /**
@@ -168,6 +169,7 @@ static void LCD_DisplayOn(LCDC_HandleTypeDef *hlcdc)
 static void LCD_DisplayOff(LCDC_HandleTypeDef *hlcdc)
 {
     /* Display Off */
+    tps_enter_sleep();
 }
 
 static void LCD_SetRegion(LCDC_HandleTypeDef *hlcdc, uint16_t Xpos0, uint16_t Ypos0, uint16_t Xpos1, uint16_t Ypos1)
@@ -664,7 +666,8 @@ L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeD
 
     EPD_GMODE_L_hs();
     EPD_STV_L_hs();
-
+    TPS_WAKEUP_L_hs();
+    
     /* Simulate LCDC IRQ handler, call user callback */
     if (hlcdc->XferCpltCallback)
     {
@@ -696,6 +699,15 @@ static void LCD_SetBrightness(LCDC_HandleTypeDef *hlcdc, uint8_t br)
     }
 }
 
+// void powerOffTouch()
+// {
+//    if (device) {
+//       rt_touch_irq_pin_enable(0);
+//       rt_device_control(tp_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
+//     } else {
+//         rt_kprintf("没找到触控设备\n");
+//     }
+// }
 
 static const LCD_DrvOpsDef LCD_drv =
 {

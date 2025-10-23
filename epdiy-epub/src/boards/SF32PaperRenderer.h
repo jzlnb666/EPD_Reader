@@ -2,7 +2,7 @@
 #include <rtdbg.h>
 #include "EpdiyFrameBufferRenderer.h"
 #include "miniz.h"
-
+#include "boards/controls/SF32_TouchControls.h"
 extern "C" {
 #include "mem_section.h"
 #include "epd_tps.h"
@@ -13,13 +13,12 @@ L2_NON_RET_BSS_SECT(frambuf, ALIGN(64) static uint8_t framebuffer1[EPD_WIDTH * E
 L2_NON_RET_BSS_SECT_END
 
 }
-static rt_device_t lcd_device = NULL;
-
-class SF32PaperRenderer : public EpdiyFrameBufferRenderer
-{
+extern uint8_t touch_enable;
+extern TouchControls *touch_controls;
+class SF32PaperRenderer : public EpdiyFrameBufferRenderer {
 private:
   // M5EPD_Driver driver;
-
+  rt_device_t lcd_device = NULL;
 public:
   SF32PaperRenderer(
       const EpdFont *regular_font,
@@ -31,8 +30,9 @@ public:
       int busy_icon_height)
       : EpdiyFrameBufferRenderer(regular_font, bold_font, italic_font, bold_italic_font, busy_icon, busy_icon_width, busy_icon_height)
   {
- 
     lcd_device = rt_device_find("lcd");
+    rt_kprintf("在构造函数中, lcd_device指针变量本身的地址: %p\n", &lcd_device);
+    rt_kprintf("在构造函数中, lcd_device指向的设备地址: %p\n", lcd_device);
     if (rt_device_open(lcd_device, RT_DEVICE_OFLAG_RDWR) == RT_EOK)
     {
         struct rt_device_graphic_info info;
@@ -52,6 +52,8 @@ public:
 
      m_frame_buffer = (uint8_t *)framebuffer1;
      clear_screen();
+    rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
+
   }
   ~SF32PaperRenderer()
   {
@@ -62,17 +64,55 @@ public:
       rt_kprintf("lcd_flush_done!\n");
       return RT_EOK;
   }
+
+  void powerOffLcd()
+  {      
+    if (lcd_device)
+    {
+        rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
+        rt_kprintf("LCD close\n");
+      
+    }
+    else
+    {
+      rt_kprintf("LCD open\n");
+    }
+  }
+
+  void powerOnLcd()
+  {
+
+    if (lcd_device)
+    {
+      rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWERON, NULL);
+      rt_kprintf("LCD已开启电源\n");
+    }
+    else
+    {
+      rt_kprintf("没找到LCD设备\n");
+    }
+  }
+ 
   void flush_display()
   {
-    rt_graphix_ops(lcd_device)->set_window(0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
+    powerOnLcd();
 
+    rt_graphix_ops(lcd_device)->set_window(0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
     rt_graphix_ops(lcd_device)->draw_rect((const char *)m_frame_buffer, 0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
+    powerOffLcd();
+    if (!touch_enable)
+    {
+        SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
+        sf32_touch_controls->powerOffTouch();
+    }
   }
 
   bool has_gray() 
   {
     return false;
   }
+
+
 
   void flush_area(int x, int y, int width, int height)
   {
@@ -81,9 +121,15 @@ public:
     // // don't forger we're rotated
     // driver.UpdateArea(y, x, height, width, needs_gray_flush ? UPDATE_MODE_GC16 : UPDATE_MODE_DU);
     // needs_gray_flush = false;
+    powerOnLcd();
     rt_graphix_ops(lcd_device)->set_window(0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
-
     rt_graphix_ops(lcd_device)->draw_rect((const char *)m_frame_buffer, 0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
+    powerOffLcd();
+    if (!touch_enable)
+    {
+        SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
+        sf32_touch_controls->powerOffTouch();
+    }
   }
   virtual bool hydrate()
   {

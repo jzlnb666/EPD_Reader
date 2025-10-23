@@ -27,7 +27,7 @@ void SF32Paper::power_up()
 }
 void SF32Paper::prepare_to_sleep()
 {
-  
+  rt_kprintf("关机了\n");
 }
 Renderer *SF32Paper::get_renderer()
 {
