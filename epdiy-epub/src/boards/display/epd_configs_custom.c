@@ -8,6 +8,7 @@
 #error "CUSTOM_EPD_WAVE_TABLE_START_ADDR is not defined!!!"
 #endif
 
+#define DEBUG_PRINT_BINARY_WAVETABLE 0
 /*
   8bit lookup table format description
   
@@ -51,10 +52,36 @@ typedef struct
 static int reflesh_times = 0;
 
 
-static const uint8_t *p_current_wave_from = NULL;
+static const uint8_t *p_current_wave_form = NULL;
 static const EpdWaveTableIndex *p_wave_table_index = NULL;
 
 #define GET_ABSOLUTE_ADDR(offset) ((const void *)((uint32_t)CUSTOM_EPD_WAVE_TABLE_START_ADDR + (offset)))
+
+#if DEBUG_PRINT_BINARY_WAVETABLE
+static void print_wave_tabel(const EpdWaveTableEntry *p_table)
+{
+    const uint8_t *p_wave_form = GET_ABSOLUTE_ADDR(p_table->wave_table_offset);
+
+    rt_kprintf("Temperature(%d,%d), cnt=%d, offset=%x, address=%x \n",p_table->min_temp,  
+            p_table->max_temp, p_table->frame_count, p_table->wave_table_offset, p_wave_form);
+    
+    //Print the waveform of each frame
+    for(uint32_t frame_num = 0; frame_num < p_table->frame_count; frame_num++)
+    {
+        const uint8_t *p_frame_wave = p_wave_form + (frame_num * 64);
+    
+        rt_kprintf(" Frame %02d: ", frame_num);
+        for (uint16_t i = 0; i < 64; i++)
+        {
+            uint8_t v = p_frame_wave[i];
+
+            rt_kprintf("%01X%01X%01X%01X", (v & 0xC0)>>6, (v & 0x30)>>4, (v & 0x0C)>>2, (v & 0x03));
+        }
+
+        rt_kprintf("\n");
+    }
+}
+#endif
 
 void epd_wave_table(void)
 {
@@ -85,6 +112,12 @@ void epd_wave_table(void)
                 p_wave_table_index = NULL;
                 return;
             }
+            else
+            {
+#if DEBUG_PRINT_BINARY_WAVETABLE
+                print_wave_tabel(&selected_table[i]);
+#endif
+            }
         }
     }
 
@@ -104,6 +137,12 @@ void epd_wave_table(void)
                 rt_kprintf("Invalid wave_table_offset in partial update table, index %d, 0x%08X \n", i, selected_table[i].wave_table_offset);
                 p_wave_table_index = NULL;
                 return;
+            }
+            else
+            {
+#if DEBUG_PRINT_BINARY_WAVETABLE
+                print_wave_tabel(&selected_table[i]);
+#endif
             }
         }
     }
@@ -138,20 +177,20 @@ uint32_t epd_wave_table_get_frames(int temperature, EpdDrawMode mode)
     // Find the interval corresponding to the temperature
     for (size_t i = 0; i < selected_table_entry_count; i++) {
         if (temperature >= selected_table[i].min_temp && temperature < selected_table[i].max_temp) {
-            p_current_wave_from = GET_ABSOLUTE_ADDR(selected_table[i].wave_table_offset);
+            p_current_wave_form = GET_ABSOLUTE_ADDR(selected_table[i].wave_table_offset);
             return selected_table[i].frame_count;
         }
     }
 
-    p_current_wave_from = GET_ABSOLUTE_ADDR(selected_table[0].wave_table_offset);
+    p_current_wave_form = GET_ABSOLUTE_ADDR(selected_table[0].wave_table_offset);
     return selected_table[0].frame_count;
 }
 
 void epd_wave_table_fill_lut(uint32_t *p_epic_lut, uint32_t frame_num)
 {
-    if(p_current_wave_from)
+    if(p_current_wave_form)
     {
-        const uint8_t *p_frame_wave = p_current_wave_from + (frame_num * 64);
+        const uint8_t *p_frame_wave = p_current_wave_form + (frame_num * 64);
     
         //Convert the 8-bit waveforms to 32-bit epic LUT values
         for (uint16_t i = 0; i < 64; i++)
