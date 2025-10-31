@@ -13,7 +13,7 @@
 #include "drv_gpio.h"
 #include "bf0_pm.h"
 #include "epd_driver.h"
-
+#include "spi_msd.h"
 #undef LOG_TAG
 #undef DBG_LEVEL
 #define  DBG_LEVEL            DBG_LOG //DBG_INFO  //
@@ -70,21 +70,39 @@ TouchControls *touch_controls = nullptr;
 
 //extern rt_err_t tps_enter_sleep(void);
 static uint8_t open_state = 1;
-
-//
+static volatile rt_uint8_t _msd_initing = 0;
 
 // 声明全局ui_queue变量，以便在battery_check_callback中使用
 rt_mq_t ui_queue = RT_NULL;
 void tp_poweroff()
 {
-    SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
-    sf32_touch_controls->powerOffTouch();
+  
+  SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
+  sf32_touch_controls->powerOffTouch();
   
 }
 void tp_poweron()
 {
+
   SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
   sf32_touch_controls->powerOnTouch();
+}
+void sd_card_power_off()
+{
+    HAL_PIN_Set(PAD_PA24, GPIO_A24, PIN_PULLDOWN, 1);
+    HAL_PIN_Set(PAD_PA25, GPIO_A25, PIN_PULLDOWN, 1);
+    HAL_PIN_Set(PAD_PA28, GPIO_A28, PIN_PULLDOWN, 1);
+    HAL_PIN_Set(PAD_PA29, GPIO_A29, PIN_PULLDOWN, 1);
+    HAL_PIN_Set(PAD_PA27, GPIO_A27, PIN_PULLDOWN, 1);
+}
+void sd_card_power_on()
+{
+
+    HAL_PIN_Set(PAD_PA24, SPI1_DIO, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA25, SPI1_DI,  PIN_PULLUP, 1);
+    HAL_PIN_Set(PAD_PA28, SPI1_CLK, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA29, SPI1_CS,  PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA27, GPIO_A27, PIN_PULLUP, 1);/*card detect pin*/
 }
 void handleEpub(Renderer *renderer, UIAction action)
 {
@@ -193,12 +211,10 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw)
       if (touch_enable)
       {                
         tp_poweron();
-        rt_kprintf("触控已开启\n");
       }
       else
       {
         tp_poweroff();
-        rt_kprintf("触控已关闭\n");
       }
 
       epub_list->render();
@@ -287,13 +303,13 @@ void handleUserInteraction(Renderer *renderer, UIAction ui_action, bool needs_re
     uint32_t start_tick = rt_tick_get();
     switch (ui_state)
     {
-    case READING_EPUB:
+    case READING_EPUB: //阅读界面
         handleEpub(renderer, ui_action);
         break;
-    case SELECTING_TABLE_CONTENTS:
+    case SELECTING_TABLE_CONTENTS: //目录界面
         handleEpubTableContents(renderer, ui_action, needs_redraw);
         break;
-    case SELECTING_EPUB:
+    case SELECTING_EPUB:  //电子书列表(主界面)
     default:
         handleEpubList(renderer, ui_action, needs_redraw);
         break;
@@ -498,20 +514,9 @@ void battery_check_callback(void* parameter)
     }
     if(!touch_enable)
     {
-      tp_poweroff();
+      //tp_poweroff();
+      //BSP_TP_PowerDown();
     }
-}
-void HAL_LPAON_Sleep(void)
-{
-    hwp_lpsys_aon->WER |= LPSYS_AON_WER_HP2LP_REQ;
-    // HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
-    HAL_LPAON_DISABLE_PAD();
-    HAL_LPAON_DISABLE_AON_PAD();
-#ifndef SF32LB55X
-    HAL_LPAON_DISABLE_VLP();
-#endif
-    /* force lpsys to enter sleep */
-    hwp_lpsys_aon->PMR = (3UL << LPSYS_AON_PMR_MODE_Pos) | (1 << LPSYS_AON_PMR_CPUWAIT_Pos) | (1 << LPSYS_AON_PMR_FORCE_SLEEP_Pos);
 }
 
 
@@ -534,10 +539,6 @@ void main_task(void *param)
   if (battery)
   {
     battery->setup();
-  }
-  if(!touch_enable)
-  {
-    //tp_poweroff();
   }
   // make space for the battery display
   renderer->set_margin_top(35);
@@ -579,8 +580,12 @@ void main_task(void *param)
   }
   touch_controls->render(renderer);
   renderer->flush_display();
-
-    battery_check_timer = rt_timer_create("battery_check", 
+  if(!touch_enable)
+  {
+    tp_poweroff();
+  }
+  sd_card_power_off();
+  battery_check_timer = rt_timer_create("battery_check", 
                                         battery_check_callback, 
                                         RT_NULL, 
                                         rt_tick_from_millisecond(5000), // 5秒
@@ -608,7 +613,9 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
     if (rt_mq_recv(ui_queue, &ui_action, sizeof(UIAction), rt_tick_from_millisecond(60000)) == RT_EOK)
     {
 
-        if (ui_action != NONE)
+      sd_card_power_on();
+      msd_reinit();
+      if (ui_action != NONE)
         {
             // 如果之前在欢迎页面，现在需要返回主界面
             if(strcmp(getCurrentPageName(), "WELCOME_PAGE") == 0)
@@ -621,7 +628,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
             // show feedback on the touch controls
             touch_controls->renderPressedState(renderer, ui_action);
             handleUserInteraction(renderer, ui_action, false);
-
+            sd_card_power_off();            
             // // make sure to clear the feedback on the touch controls
             touch_controls->render(renderer);
         }

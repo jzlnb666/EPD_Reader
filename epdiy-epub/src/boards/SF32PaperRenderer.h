@@ -52,7 +52,7 @@ public:
 
      m_frame_buffer = (uint8_t *)framebuffer1;
      clear_screen();
-    rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
+     rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
 
   }
   ~SF32PaperRenderer()
@@ -71,7 +71,7 @@ public:
     {
         rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
         rt_kprintf("LCD close\n");
-      
+
     }
     else
     {
@@ -85,6 +85,7 @@ public:
     if (lcd_device)
     {
       rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWERON, NULL);
+
       rt_kprintf("LCD已开启电源\n");
     }
     else
@@ -96,15 +97,9 @@ public:
   void flush_display()
   {
     powerOnLcd();
-
     rt_graphix_ops(lcd_device)->set_window(0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
     rt_graphix_ops(lcd_device)->draw_rect((const char *)m_frame_buffer, 0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
     powerOffLcd();
-    if (!touch_enable)
-    {
-        SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
-        sf32_touch_controls->powerOffTouch();
-    }
   }
 
   bool has_gray() 
@@ -125,11 +120,6 @@ public:
     rt_graphix_ops(lcd_device)->set_window(0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
     rt_graphix_ops(lcd_device)->draw_rect((const char *)m_frame_buffer, 0, 0, LCD_HOR_RES_MAX - 1, LCD_VER_RES_MAX - 1);
     powerOffLcd();
-    if (!touch_enable)
-    {
-        SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
-        sf32_touch_controls->powerOffTouch();
-    }
   }
   virtual bool hydrate()
   {

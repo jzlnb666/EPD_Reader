@@ -99,9 +99,9 @@ void SF32_TouchControls::powerOffTouch()
    if (tp_device) 
     {
       rt_device_control(tp_device, RTGRAPHIC_CTRL_POWEROFF, NULL);
-      //rt_kprintf("触控已关闭\n");
+      rt_kprintf("touch close\n");
     } else {
-        rt_kprintf("没找到触控设备\n");
+        rt_kprintf("no touch device found\n");
     }
 }
 
@@ -109,9 +109,9 @@ void SF32_TouchControls::powerOnTouch()
 {
    if (tp_device) {
       rt_device_control(tp_device, RTGRAPHIC_CTRL_POWERON, NULL);
-       //rt_kprintf("触控已开启\n");
+      rt_kprintf("touch open\n");
     } else {
-        rt_kprintf("没找到触控设备\n");
+        rt_kprintf("no touch device found\n");
     }
 }
 void SF32_TouchControls::renderPressedState(Renderer *renderer, UIAction action, bool state)

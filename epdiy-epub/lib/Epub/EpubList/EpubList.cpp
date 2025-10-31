@@ -16,8 +16,8 @@ extern uint8_t touch_enable;
 static const char *TAG = "PUBLIST";
 
 #define PADDING 20
-#define EPUBS_PER_PAGE 4  
-#define BOTTOM_AREA_HEIGHT 80 
+#define EPUBS_PER_PAGE 5  
+#define BOTTOM_AREA_HEIGHT 50
 #define BOTTOM_AREA_ITEM_INDEX -1  
 
 void EpubList::next()
@@ -227,43 +227,77 @@ void EpubList::render()
   state.previous_rendered_page = current_page;
   
   // touch 开关底部区域
+
   int screen_height = renderer->get_page_height();
-  int bottom_area_y = screen_height - BOTTOM_AREA_HEIGHT - 40;  
-  int rect_width = renderer->get_page_width() - 2 * PADDING;
-  int rect_height = BOTTOM_AREA_HEIGHT;
+  int bottom_area_y = screen_height - BOTTOM_AREA_HEIGHT - 11;  
+
+
+  int original_width = renderer->get_page_width() - 2 * PADDING;
+  int rect_width = original_width * 2 / 3; 
+  int rect_x = PADDING + (original_width - rect_width) / 2; 
+
+  int rect_height = BOTTOM_AREA_HEIGHT; 
+
   if (bottom_area_y < 0) 
   {
-    bottom_area_y = 0;
-    rect_height = screen_height - 5;
+      bottom_area_y = 5; 
+      rect_height = BOTTOM_AREA_HEIGHT;
   }
-  renderer->fill_rect(PADDING, bottom_area_y, rect_width, rect_height, 255);
+
+
+  renderer->fill_rect(rect_x, bottom_area_y, rect_width, rect_height, 255);
+
   const char* text = (touch_enable == 1) ? "Touch : On" : "Touch : Off";
-  int text_y = bottom_area_y + 5;  
+
+  int text_height = renderer->get_line_height();
+  int text_y = bottom_area_y + (rect_height - text_height) / 2;
+
+  if (text_y < bottom_area_y + 2) 
+  {
+      text_y = bottom_area_y + 2;
+  }
+  if (text_y + text_height > bottom_area_y + rect_height - 2) 
+  {
+      text_y = bottom_area_y + rect_height - text_height - 2;
+  }
+
   int text_length = strlen(text);
   int estimated_text_width = text_length * 12; 
-  int text_x = PADDING + (rect_width - estimated_text_width) / 2;
+  int text_x = rect_x + (rect_width - estimated_text_width) / 2; 
+
+
+  if (text_x < rect_x + 5) 
+  {
+      text_x = rect_x + 5;
+  }
+  if (text_x + estimated_text_width > rect_x + rect_width - 5) 
+  {
+      text_x = rect_x + rect_width - estimated_text_width - 5;
+  }
+
   renderer->draw_text(text_x, text_y, text, 0);
-  
+
   if (state.selected_item == BOTTOM_AREA_ITEM_INDEX) 
   {
-    int border_thickness = 3;  
-    for (int i = 0; i < border_thickness; i++) 
-    {
-      renderer->draw_rect(PADDING + i, bottom_area_y + i, 
-                         rect_width - 2 * i, 
-                         rect_height - 2 * i, 0);
-    }
-  } else 
-  {
-    if (state.previous_selected_item == BOTTOM_AREA_ITEM_INDEX) 
-    {
-      int border_thickness = 3;
+      int border_thickness = 3;  
       for (int i = 0; i < border_thickness; i++) 
       {
-        renderer->draw_rect(PADDING + i, bottom_area_y + i, 
-                           rect_width - 2 * i, 
-                           rect_height - 2 * i, 255);
+          renderer->draw_rect(rect_x + i, bottom_area_y + i, 
+                          rect_width - 2 * i, 
+                          rect_height - 2 * i, 0);
       }
-    }
+  } 
+  else 
+  {
+      if (state.previous_selected_item == BOTTOM_AREA_ITEM_INDEX) 
+      {
+          int border_thickness = 3;
+          for (int i = 0; i < border_thickness; i++) 
+          {
+              renderer->draw_rect(rect_x + i, bottom_area_y + i, 
+                                rect_width - 2 * i, 
+                                rect_height - 2 * i, 255);
+          }
+      }
   }
 }

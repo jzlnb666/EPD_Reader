@@ -125,17 +125,21 @@ static void BSP_PIN_Common(void)
     HAL_PIN_Set(PAD_PA13, MPI2_DIO1, PIN_PULLDOWN, 1);
     HAL_PIN_Set(PAD_PA14, MPI2_DIO2, PIN_PULLUP,   1);
     HAL_PIN_Set(PAD_PA17, MPI2_DIO3, PIN_PULLUP, 1);
-#elif RT_USING_SPI_MSD
+    
+#endif
+
+#ifdef RT_USING_SPI_MSD
     /*****SPI TF card HCPU******************************START*/
-    //SPI1(TF card)
+     //SPI1(TF card)
     HAL_PIN_Set(PAD_PA24, SPI1_DIO, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA25, SPI1_DI,  PIN_PULLDOWN, 1);
+    HAL_PIN_Set(PAD_PA25, SPI1_DI,  PIN_PULLUP, 1);
     HAL_PIN_Set(PAD_PA28, SPI1_CLK, PIN_NOPULL, 1);
     HAL_PIN_Set(PAD_PA29, SPI1_CS,  PIN_NOPULL, 1);
     /*TF detect*/
     HAL_PIN_Set(PAD_PA27, GPIO_A27, PIN_PULLUP, 1);/*card detect pin*/
     /*****SPI TF card HCPU******************************END***/
 #endif
+
     // UART1 - debug
     HAL_PIN_Set(PAD_PA18, USART1_RXD, PIN_PULLUP, 1);
     HAL_PIN_Set(PAD_PA19, USART1_TXD, PIN_PULLUP, 1);
@@ -154,6 +158,7 @@ static void BSP_PIN_Common(void)
     HAL_PIN_Set(PAD_PA00 + CHG_STATUS, GPIO_A0 + CHG_STATUS, PIN_NOPULL, 1);//CHG_STATUS
 #endif
 }
+
 void BSP_PIN_Touch(void)
 {
     // Touch

@@ -20,13 +20,14 @@ void BSP_GPIO_Set(int pin, int val, int is_porta)
 
 __WEAK void BSP_PowerDownCustom(int coreid, bool is_deep_sleep)
 {
+    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO3_3V3, /*enable=*/false, /*wait=*/true);//VDD33_VOUT2
 
 }
 
 __WEAK void BSP_PowerUpCustom(bool is_deep_sleep)
 {
-    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO3_3V3, /*enable=*/true, /*wait=*/true);//VDD33_VOUT2
-    BSP_GPIO_Set(32, 1, 1); // TP Power
+   HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO3_3V3, /*enable=*/true, /*wait=*/true);//VDD33_VOUT2
+
 }
 
 
