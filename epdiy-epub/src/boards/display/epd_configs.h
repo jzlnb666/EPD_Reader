@@ -5,6 +5,8 @@ typedef enum
 {
     EPD_DRAW_MODE_INVALID = 0,
     EPD_DRAW_MODE_AUTO = 1,
+    EPD_DRAW_MODE_FULL = 2,
+    EPD_DRAW_MODE_PARTIAL = 3,
 } EpdDrawMode;
 
 typedef struct
