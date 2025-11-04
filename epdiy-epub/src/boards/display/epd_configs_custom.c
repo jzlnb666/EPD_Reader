@@ -208,7 +208,7 @@ void epd_wave_table_fill_lut(uint32_t *p_epic_lut, uint32_t frame_num)
 
 uint16_t epd_get_vcom_voltage(void)
 {
-    return 2100;
+    return 1000;
 }
 
 
@@ -216,7 +216,7 @@ const EPD_TimingConfig *epd_get_timing_config(void)
 {
     static const EPD_TimingConfig timing_config = {
         .sclk_freq = 24,
-        .SDMODE = 1,
+        .SDMODE = 0,
         .LSL = 0,
         .LBL = 0,
         .LDL = LCD_HOR_RES_MAX/4,
