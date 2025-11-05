@@ -8,7 +8,10 @@ typedef enum
   UP,
   DOWN,
   SELECT,
-  LAST_INTERACTION
+  LAST_INTERACTION,
+  MSG_DRAW_LOW_POWER_PAGE,   
+  MSG_DRAW_CHARGE_PAGE,      
+  MSG_DRAW_WELCOME_PAGE     
 } UIAction;
 
 typedef std::function<void(UIAction)> ActionCallback_t;

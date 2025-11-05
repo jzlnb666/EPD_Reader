@@ -27,6 +27,8 @@ extern "C"
 {
   int main();
   rt_uint32_t heap_free_size(void);
+  extern void SD_card_power_off();
+  extern void SD_card_power_on();
 }
 
 
@@ -74,6 +76,7 @@ static volatile rt_uint8_t _msd_initing = 0;
 
 // 声明全局ui_queue变量，以便在battery_check_callback中使用
 rt_mq_t ui_queue = RT_NULL;
+
 void tp_poweroff()
 {
   
@@ -86,23 +89,6 @@ void tp_poweron()
 
   SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
   sf32_touch_controls->powerOnTouch();
-}
-void sd_card_power_off()
-{
-    HAL_PIN_Set(PAD_PA24, GPIO_A24, PIN_PULLDOWN, 1);
-    HAL_PIN_Set(PAD_PA25, GPIO_A25, PIN_PULLDOWN, 1);
-    HAL_PIN_Set(PAD_PA28, GPIO_A28, PIN_PULLDOWN, 1);
-    HAL_PIN_Set(PAD_PA29, GPIO_A29, PIN_PULLDOWN, 1);
-    HAL_PIN_Set(PAD_PA27, GPIO_A27, PIN_PULLDOWN, 1);
-}
-void sd_card_power_on()
-{
-
-    HAL_PIN_Set(PAD_PA24, SPI1_DIO, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA25, SPI1_DI,  PIN_PULLUP, 1);
-    HAL_PIN_Set(PAD_PA28, SPI1_CLK, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA29, SPI1_CS,  PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA27, GPIO_A27, PIN_PULLUP, 1);/*card detect pin*/
 }
 void handleEpub(Renderer *renderer, UIAction action)
 {
@@ -336,10 +322,8 @@ void back_to_main_page()
 {      
       if (strcmp(getCurrentPageName(), "MAIN_MENU") == 0) 
       {
-        //rt_kprintf("当前在主界面，无需返回\n");  
         return;
       }
-      //rt_kprintf("进入主界面\n");  
       lowpower_ui_state = MAIN_MENU;
       ui_state = SELECTING_EPUB;
       bool hydrate_success = renderer->hydrate();
@@ -372,15 +356,11 @@ void draw_welcome_page(Battery *battery)
 {
     if (strcmp(getCurrentPageName(), "WELCOME_PAGE") == 0) 
     {
-      //rt_kprintf("当前在欢迎页面，无需返回\n");
       return;
     }
     lowpower_ui_state = WELCOME_PAGE;
     tp_poweroff();
-    touch_enable = 0;
-    // 清除渲染器内部缓冲区
-    renderer->clear_screen();
-    
+    touch_enable = 0;   
     // 设置白色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
     if (battery) {
@@ -404,7 +384,6 @@ void draw_welcome_page(Battery *battery)
     // 显示
     renderer->flush_display();
     
-    rt_thread_delay(500);
 }
 
 // 绘制低电量页面
@@ -412,14 +391,9 @@ void draw_low_power_page(Battery *battery)
 {
     if (strcmp(getCurrentPageName(), "LOW_POWER_PAGE") == 0) 
     {
-        //rt_kprintf("当前在低电量页面，无需返回\n");
         return;
     }
-    lowpower_ui_state = LOW_POWER_PAGE;
-    
-    // 清除渲染器内部缓冲区
-    renderer->clear_screen();
-    
+    lowpower_ui_state = LOW_POWER_PAGE;  
     // 设置白色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
     if (battery) {
@@ -443,7 +417,6 @@ void draw_low_power_page(Battery *battery)
     // 显示
     renderer->flush_display();
     
-    rt_thread_delay(500);
 }
 
 //充电页面
@@ -451,14 +424,9 @@ void draw_charge_page(Battery *battery)
 {
     if (strcmp(getCurrentPageName(), "CHARGING_PAGE") == 0) 
     {
-        //rt_kprintf("当前在充电页面，无需返回\n");
         return;
     }
     lowpower_ui_state = CHARGING_PAGE;
-    
-    // 清除渲染器内部缓冲区
-    renderer->clear_screen();
-    
     // 设置白色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
     if (battery) {
@@ -481,8 +449,9 @@ void draw_charge_page(Battery *battery)
     renderer->draw_text(x_pos, y_pos, charge_text, true);
     // 显示
     renderer->flush_display();
-    rt_thread_delay(500);
 }
+
+
 
 void battery_check_callback(void* parameter)
 {
@@ -494,28 +463,24 @@ void battery_check_callback(void* parameter)
         ulog_i("main", "Battery Level %f, percent %d", voltage, (int)percentage);
         
         // 如果电量小于20%，且不在低电量模式，并且没有在充电，则进入低电量模式
-        if (percentage < 20.0f && !is_charging) {
-            rt_kprintf("电量低\n");
+        if (percentage < 20.0f && !is_charging && low_power != 1) {
             low_power = 1;        
-            draw_low_power_page(battery);
+            UIAction msg = MSG_DRAW_LOW_POWER_PAGE;
+            rt_mq_send(ui_queue, &msg, sizeof(UIAction));
         }
         // 如果正在充电且之前处于低电量模式，则进入充电页面
         else if (is_charging && low_power == 1) 
         {
-            draw_charge_page(battery);
+            UIAction msg = MSG_DRAW_CHARGE_PAGE;
+            rt_mq_send(ui_queue, &msg, sizeof(UIAction));
         }
         // 如果电量充足且之前处于低电量模式，则恢复正常模式
         else if (percentage >= 20.0f && low_power == 1) 
         {
             low_power = 0;           
-            rt_thread_delay(100);
-            draw_welcome_page(battery);
+            UIAction msg = MSG_DRAW_WELCOME_PAGE;
+            rt_mq_send(ui_queue, &msg, sizeof(UIAction));
         }    
-    }
-    if(!touch_enable)
-    {
-      //tp_poweroff();
-      //BSP_TP_PowerDown();
     }
 }
 
@@ -584,17 +549,19 @@ void main_task(void *param)
   {
     tp_poweroff();
   }
-  sd_card_power_off();
+  SD_card_power_off();
   battery_check_timer = rt_timer_create("battery_check", 
                                         battery_check_callback, 
                                         RT_NULL, 
                                         rt_tick_from_millisecond(5000), // 5秒
                                         RT_TIMER_FLAG_PERIODIC | RT_TIMER_FLAG_SOFT_TIMER);
 
-  if (battery_check_timer != RT_NULL) {
+  if (battery_check_timer != RT_NULL) 
+  {
       rt_timer_start(battery_check_timer);
       ulog_i("main", "Battery check timer started");
-  } else {
+  } else 
+  {
       ulog_e("main", "Failed to create battery check timer");
   }
   // keep track of when the user last interacted and go to sleep after N seconds
@@ -609,26 +576,68 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
     {
         draw_welcome_page(battery);      
     }
-    UIAction ui_action = NONE;
-    if (rt_mq_recv(ui_queue, &ui_action, sizeof(UIAction), rt_tick_from_millisecond(60000)) == RT_EOK)
+    uint32_t msg_data;
+    if (rt_mq_recv(ui_queue, &msg_data, sizeof(uint32_t), rt_tick_from_millisecond(60000)) == RT_EOK)
+{
+    UIAction ui_action = (UIAction)msg_data;
+    
+    // 检查是否是电池UI消息
+    if (ui_action == MSG_DRAW_LOW_POWER_PAGE || ui_action == MSG_DRAW_CHARGE_PAGE || ui_action == MSG_DRAW_WELCOME_PAGE)
     {
-
-      sd_card_power_on();
-      msd_reinit();
-      if (ui_action != NONE)
+        rt_kprintf("battery msg: %d\n", ui_action);
+        SD_card_power_on();
+        switch (ui_action)
         {
-            // 如果之前在欢迎页面，现在需要返回主界面
-            if(strcmp(getCurrentPageName(), "WELCOME_PAGE") == 0)
-            {
-              back_to_main_page();
-            }                     
-            //rt_kprintf("ui_action = %d\n", ui_action);
-            // something happened!
-            last_user_interaction = rt_tick_get_millisecond();
-            // show feedback on the touch controls
-            touch_controls->renderPressedState(renderer, ui_action);
-            handleUserInteraction(renderer, ui_action, false);
-            sd_card_power_off();            
+            case MSG_DRAW_LOW_POWER_PAGE:
+                rt_kprintf("low_power\n");
+                draw_low_power_page(battery);
+                break;
+            case MSG_DRAW_CHARGE_PAGE:
+                rt_kprintf("charge_power\n");
+                draw_charge_page(battery);
+                break;
+            case MSG_DRAW_WELCOME_PAGE:
+                rt_kprintf("power ok , welcome\n");
+                draw_welcome_page(battery);
+                break;
+            default:
+                break;
+        }
+        SD_card_power_off();
+    }
+    else
+    {
+        rt_kprintf("no battery msg: %d\n", msg_data);    
+        // 否则视为普通UIAction消息
+        SD_card_power_on();
+        int card_state=rt_pin_read(27); /*card detect pin*/
+        if(card_state == 0)
+        {
+            rt_kprintf("SD card inserted\n");
+            msd_reinit();
+        }
+        else 
+        {
+            rt_kprintf("SD card removed\n");
+        }
+
+          if (ui_action != NONE)
+          {
+              // 如果之前在欢迎页面，现在需要返回主界面
+              if(strcmp(getCurrentPageName(), "WELCOME_PAGE") == 0)
+              {
+                back_to_main_page();
+              }                     
+              //rt_kprintf("ui_action = %d\n", ui_action);
+              // something happened!
+              last_user_interaction = rt_tick_get_millisecond();
+              // show feedback on the touch controls
+              touch_controls->renderPressedState(renderer, ui_action);
+              handleUserInteraction(renderer, ui_action, false);
+              SD_card_power_off();
+          }
+      }
+            
             // // make sure to clear the feedback on the touch controls
             touch_controls->render(renderer);
         }
@@ -640,7 +649,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
         }
         renderer->flush_display();
 
-    }
+    
     // update the battery level - do this even if there is no interaction so we
     // show the battery level even if the user is idle
     
@@ -666,7 +675,6 @@ extern "C"
 {
   int main()
   {
-    //rt_pm_request(PM_SLEEP_MODE_IDLE);
     HAL_LPAON_Sleep();
     // dump out the epub list state
     ulog_i("main", "epub list state num_epubs=%d", epub_list_state.num_epubs);

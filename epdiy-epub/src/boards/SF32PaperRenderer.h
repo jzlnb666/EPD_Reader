@@ -31,8 +31,6 @@ public:
       : EpdiyFrameBufferRenderer(regular_font, bold_font, italic_font, bold_italic_font, busy_icon, busy_icon_width, busy_icon_height)
   {
     lcd_device = rt_device_find("lcd");
-    rt_kprintf("在构造函数中, lcd_device指针变量本身的地址: %p\n", &lcd_device);
-    rt_kprintf("在构造函数中, lcd_device指向的设备地址: %p\n", lcd_device);
     if (rt_device_open(lcd_device, RT_DEVICE_OFLAG_RDWR) == RT_EOK)
     {
         struct rt_device_graphic_info info;
@@ -75,7 +73,7 @@ public:
     }
     else
     {
-      rt_kprintf("LCD open\n");
+      rt_kprintf("no find lcd device\n");
     }
   }
 
@@ -86,11 +84,11 @@ public:
     {
       rt_device_control(lcd_device, RTGRAPHIC_CTRL_POWERON, NULL);
 
-      rt_kprintf("LCD已开启电源\n");
+      rt_kprintf("LCD Open\n");
     }
     else
     {
-      rt_kprintf("没找到LCD设备\n");
+      rt_kprintf("no find lcd device\n");
     }
   }
  
