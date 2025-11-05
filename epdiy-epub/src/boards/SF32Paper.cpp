@@ -9,6 +9,8 @@ extern "C" {
 #include "dfs_fs.h"
 #include "mem_map.h"
 #include "rtdevice.h"
+#include "bf0_hal_aon.h"
+#include "spi_msd.h"
 #ifndef _WIN32
     #include "drv_flash.h"
 #endif /* _WIN32 */
@@ -16,18 +18,37 @@ extern const EpdFont regular_font;
 extern const EpdFont bold_font;
 extern const EpdFont italic_font;
 extern const EpdFont bold_italic_font;
-
+extern void SD_card_power_off();  
+extern void SD_card_power_on(); 
 }
 
+void SF32Paper::sleep_filesystem()
+{
+    SD_card_power_off();
+}
 
+void SF32Paper::wakeup_filesystem()
+{
+    SD_card_power_on();
+    int card_state=rt_pin_read(27); /*card detect pin*/
+    if(card_state == 0)
+    {
+        rt_kprintf("SD card inserted\n");
+        msd_reinit();
+    }
+    else 
+    {
+        rt_kprintf("SD card removed\n");
+    }
+
+}
 void SF32Paper::power_up()
 {
-  // nothing to do for this board - should probably move the power up from
-  // the driver to here?
+  HAL_LPAON_Sleep();
 }
 void SF32Paper::prepare_to_sleep()
 {
-  rt_kprintf("关机了\n");
+  rt_kprintf("shutdown\n");
 }
 Renderer *SF32Paper::get_renderer()
 {

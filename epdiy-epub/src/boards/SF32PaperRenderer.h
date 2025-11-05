@@ -13,8 +13,6 @@ L2_NON_RET_BSS_SECT(frambuf, ALIGN(64) static uint8_t framebuffer1[EPD_WIDTH * E
 L2_NON_RET_BSS_SECT_END
 
 }
-extern uint8_t touch_enable;
-extern TouchControls *touch_controls;
 class SF32PaperRenderer : public EpdiyFrameBufferRenderer {
 private:
   // M5EPD_Driver driver;

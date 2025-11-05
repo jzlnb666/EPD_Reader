@@ -10,6 +10,8 @@ public:
   virtual Renderer *get_renderer();
   virtual void start_filesystem();
   virtual void stop_filesystem();
+  virtual void sleep_filesystem();  
+  virtual void wakeup_filesystem();  
   virtual ButtonControls *get_button_controls(rt_mq_t ui_queue);
   virtual TouchControls *get_touch_controls(Renderer *renderer, rt_mq_t ui_queue);
 };

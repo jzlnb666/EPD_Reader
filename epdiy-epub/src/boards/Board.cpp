@@ -19,9 +19,9 @@ void Board::stop_filesystem()
    ulog_i("main", "stop_filesystem");
 }
 
-Battery *Board::get_battery()
+Battery *Board::get_battery(rt_mq_t ui_queue)
 {
-  return new ADCBattery();
+  return new ADCBattery(ui_queue);
 }
 
 TouchControls *Board::get_touch_controls(Renderer *renderer, rt_mq_t ui_queue)

@@ -13,7 +13,7 @@
 #include "drv_gpio.h"
 #include "bf0_pm.h"
 #include "epd_driver.h"
-#include "spi_msd.h"
+
 #undef LOG_TAG
 #undef DBG_LEVEL
 #define  DBG_LEVEL            DBG_LOG //DBG_INFO  //
@@ -27,8 +27,9 @@ extern "C"
 {
   int main();
   rt_uint32_t heap_free_size(void);
-  extern void SD_card_power_off();
-  extern void SD_card_power_on();
+  extern const uint8_t low_power_map[];
+  extern const uint8_t chargeing_map[];
+  extern const uint8_t welcome_map[];
 }
 
 
@@ -62,7 +63,6 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw);
 static EpubList *epub_list = nullptr;
 static EpubReader *reader = nullptr;
 static EpubToc *contents = nullptr;
-static rt_timer_t battery_check_timer = RT_NULL;
 uint8_t low_power = 0;
 Battery *battery = nullptr;
 uint8_t touch_enable = 0;
@@ -74,7 +74,6 @@ TouchControls *touch_controls = nullptr;
 static uint8_t open_state = 1;
 static volatile rt_uint8_t _msd_initing = 0;
 
-// 声明全局ui_queue变量，以便在battery_check_callback中使用
 rt_mq_t ui_queue = RT_NULL;
 
 void tp_poweroff()
@@ -351,6 +350,7 @@ void back_to_main_page()
       renderer->flush_display();
 
 }
+
 //欢迎页面
 void draw_welcome_page(Battery *battery)
 {
@@ -361,26 +361,25 @@ void draw_welcome_page(Battery *battery)
     lowpower_ui_state = WELCOME_PAGE;
     tp_poweroff();
     touch_enable = 0;   
-    // 设置白色背景
-    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
+    // 设置黑色背景
+    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 0);
     if (battery) {
         renderer->set_margin_top(35);
         draw_charge_status(renderer, battery);
         draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
     }
 
-    const char *welcome_text = "欢                 迎";
-    int text_width = renderer->get_text_width(welcome_text);
-    int text_height = renderer->get_line_height();
-    // 居中
-    int center_x = renderer->get_page_width() / 2;
-
-    int usable_height = renderer->get_page_height() - 35; 
-    int center_y = 35 + usable_height / 2; 
-    int x_pos = center_x - text_width / 2;
-    int y_pos = center_y - text_height / 2;
+    const int img_width = 649;
+    const int img_height = 150;
     
-    renderer->draw_text(x_pos, y_pos, welcome_text, true);
+    int center_x = renderer->get_page_width() / 2;
+    int center_y = 35 + (renderer->get_page_height() - 35) / 2;
+    int x_pos = center_x - img_width / 2;
+    int y_pos = center_y - img_height / 2;
+    
+    EpdiyFrameBufferRenderer* fb_renderer = static_cast<EpdiyFrameBufferRenderer*>(renderer);
+    fb_renderer->show_img(x_pos, y_pos, img_width, img_height, welcome_map);
+
     // 显示
     renderer->flush_display();
     
@@ -394,26 +393,24 @@ void draw_low_power_page(Battery *battery)
         return;
     }
     lowpower_ui_state = LOW_POWER_PAGE;  
-    // 设置白色背景
-    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
+    // 设置黑色背景
+    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 0);
     if (battery) {
         renderer->set_margin_top(35);
         draw_charge_status(renderer, battery);
         draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
     }
 
-    const char *low_power_text = "电量低，请充电";
-    int text_width = renderer->get_text_width(low_power_text);
-    int text_height = renderer->get_line_height();
-    // 居中
+    const int img_width = 200;
+    const int img_height = 200;
+    
     int center_x = renderer->get_page_width() / 2;
-
-    int usable_height = renderer->get_page_height() - 35; 
-    int center_y = 35 + usable_height / 2; 
-    int x_pos = center_x - text_width / 2;
-    int y_pos = center_y - text_height / 2;
-
-    renderer->draw_text(x_pos, y_pos, low_power_text, true);
+    int center_y = 35 + (renderer->get_page_height() - 35) / 2;
+    int x_pos = center_x - img_width / 2;
+    int y_pos = center_y - img_height / 2;
+    
+    EpdiyFrameBufferRenderer* fb_renderer = static_cast<EpdiyFrameBufferRenderer*>(renderer);
+    fb_renderer->show_img(x_pos, y_pos, img_width, img_height, low_power_map);
     // 显示
     renderer->flush_display();
     
@@ -427,63 +424,27 @@ void draw_charge_page(Battery *battery)
         return;
     }
     lowpower_ui_state = CHARGING_PAGE;
-    // 设置白色背景
-    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
+    // 设置黑色背景
+    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 0);
     if (battery) {
         renderer->set_margin_top(35);
         draw_charge_status(renderer, battery);
         draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
     }
 
-    const char *charge_text = "充 电 中";
-    int text_width = renderer->get_text_width(charge_text);
-    int text_height = renderer->get_line_height();
-    // 居中
+    const int img_width = 200;
+    const int img_height = 200;
+    
     int center_x = renderer->get_page_width() / 2;
-
-    int usable_height = renderer->get_page_height() - 35; 
-    int center_y = 35 + usable_height / 2; 
-    int x_pos = center_x - text_width / 2;
-    int y_pos = center_y - text_height / 2;
-
-    renderer->draw_text(x_pos, y_pos, charge_text, true);
+    int center_y = 35 + (renderer->get_page_height() - 35) / 2;
+    int x_pos = center_x - img_width / 2;
+    int y_pos = center_y - img_height / 2;
+    
+    EpdiyFrameBufferRenderer* fb_renderer = static_cast<EpdiyFrameBufferRenderer*>(renderer);
+    fb_renderer->show_img(x_pos, y_pos, img_width, img_height, chargeing_map);
     // 显示
     renderer->flush_display();
 }
-
-
-
-void battery_check_callback(void* parameter)
-{
-  if (battery) 
-    {
-        float voltage = battery->get_voltage();
-        float percentage = battery->get_percentage();
-        bool is_charging = battery->is_charging();
-        ulog_i("main", "Battery Level %f, percent %d", voltage, (int)percentage);
-        
-        // 如果电量小于20%，且不在低电量模式，并且没有在充电，则进入低电量模式
-        if (percentage < 20.0f && !is_charging && low_power != 1) {
-            low_power = 1;        
-            UIAction msg = MSG_DRAW_LOW_POWER_PAGE;
-            rt_mq_send(ui_queue, &msg, sizeof(UIAction));
-        }
-        // 如果正在充电且之前处于低电量模式，则进入充电页面
-        else if (is_charging && low_power == 1) 
-        {
-            UIAction msg = MSG_DRAW_CHARGE_PAGE;
-            rt_mq_send(ui_queue, &msg, sizeof(UIAction));
-        }
-        // 如果电量充足且之前处于低电量模式，则恢复正常模式
-        else if (percentage >= 20.0f && low_power == 1) 
-        {
-            low_power = 0;           
-            UIAction msg = MSG_DRAW_WELCOME_PAGE;
-            rt_mq_send(ui_queue, &msg, sizeof(UIAction));
-        }    
-    }
-}
-
 
 void main_task(void *param)
 {
@@ -497,10 +458,12 @@ void main_task(void *param)
   // bring the file system up - SPIFFS or SDCard depending on the defines in platformio.ini
   ulog_i("main", "Starting file system");
   board->start_filesystem();
-
+  // create a message queue for UI events
+  // 将ui_queue初始化并赋值给全局变量
+  ui_queue = rt_mq_create("ui_act", sizeof(UIAction), 10, 0);
   // battery details
   ulog_i("main", "Starting battery monitor");
-  battery = board->get_battery();
+  battery = board->get_battery(ui_queue);
   if (battery)
   {
     battery->setup();
@@ -511,9 +474,7 @@ void main_task(void *param)
   renderer->set_margin_left(10);
   renderer->set_margin_right(10);
 
-  // create a message queue for UI events
-  // 将ui_queue初始化并赋值给全局变量
-  ui_queue = rt_mq_create("ui_act", sizeof(UIAction), 10, 0);
+
 
   // set the controls up
   ulog_i("main", "Setting up controls");
@@ -549,21 +510,7 @@ void main_task(void *param)
   {
     tp_poweroff();
   }
-  SD_card_power_off();
-  battery_check_timer = rt_timer_create("battery_check", 
-                                        battery_check_callback, 
-                                        RT_NULL, 
-                                        rt_tick_from_millisecond(5000), // 5秒
-                                        RT_TIMER_FLAG_PERIODIC | RT_TIMER_FLAG_SOFT_TIMER);
-
-  if (battery_check_timer != RT_NULL) 
-  {
-      rt_timer_start(battery_check_timer);
-      ulog_i("main", "Battery check timer started");
-  } else 
-  {
-      ulog_e("main", "Failed to create battery check timer");
-  }
+  board->sleep_filesystem();
   // keep track of when the user last interacted and go to sleep after N seconds
   rt_tick_t last_user_interaction = rt_tick_get_millisecond();
 
@@ -585,7 +532,6 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
     if (ui_action == MSG_DRAW_LOW_POWER_PAGE || ui_action == MSG_DRAW_CHARGE_PAGE || ui_action == MSG_DRAW_WELCOME_PAGE)
     {
         rt_kprintf("battery msg: %d\n", ui_action);
-        SD_card_power_on();
         switch (ui_action)
         {
             case MSG_DRAW_LOW_POWER_PAGE:
@@ -603,24 +549,12 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
             default:
                 break;
         }
-        SD_card_power_off();
     }
     else
     {
         rt_kprintf("no battery msg: %d\n", msg_data);    
         // 否则视为普通UIAction消息
-        SD_card_power_on();
-        int card_state=rt_pin_read(27); /*card detect pin*/
-        if(card_state == 0)
-        {
-            rt_kprintf("SD card inserted\n");
-            msd_reinit();
-        }
-        else 
-        {
-            rt_kprintf("SD card removed\n");
-        }
-
+          board->wakeup_filesystem();
           if (ui_action != NONE)
           {
               // 如果之前在欢迎页面，现在需要返回主界面
@@ -634,7 +568,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
               // show feedback on the touch controls
               touch_controls->renderPressedState(renderer, ui_action);
               handleUserInteraction(renderer, ui_action, false);
-              SD_card_power_off();
+              board->sleep_filesystem();
           }
       }
             
@@ -675,7 +609,6 @@ extern "C"
 {
   int main()
   {
-    HAL_LPAON_Sleep();
     // dump out the epub list state
     ulog_i("main", "epub list state num_epubs=%d", epub_list_state.num_epubs);
     ulog_i("main", "epub list state is_loaded=%d", epub_list_state.is_loaded);
