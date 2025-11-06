@@ -8,9 +8,6 @@
 #include "boards/controls/SF32_TouchControls.h"
 #include "boards/SF32PaperRenderer.h"
 #include "gui_app_pm.h"
-#include "epd_tps.h"
-#include "epd_pin_defs.h"
-#include "drv_gpio.h"
 #include "bf0_pm.h"
 #include "epd_driver.h"
 
@@ -30,6 +27,7 @@ extern "C"
   extern const uint8_t low_power_map[];
   extern const uint8_t chargeing_map[];
   extern const uint8_t welcome_map[];
+  extern const uint8_t shutdown_map[];
 }
 
 
@@ -63,32 +61,13 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw);
 static EpubList *epub_list = nullptr;
 static EpubReader *reader = nullptr;
 static EpubToc *contents = nullptr;
-uint8_t low_power = 0;
 Battery *battery = nullptr;
-uint8_t touch_enable = 0;
 // 声明全局变量，以便open_tp_lcd和close_tp_lcd函数可以访问
 Renderer *renderer = nullptr;
 TouchControls *touch_controls = nullptr;
 
-//extern rt_err_t tps_enter_sleep(void);
-static uint8_t open_state = 1;
-static volatile rt_uint8_t _msd_initing = 0;
-
 rt_mq_t ui_queue = RT_NULL;
 
-void tp_poweroff()
-{
-  
-  SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
-  sf32_touch_controls->powerOffTouch();
-  
-}
-void tp_poweron()
-{
-
-  SF32_TouchControls *sf32_touch_controls = static_cast<SF32_TouchControls*>(touch_controls);
-  sf32_touch_controls->powerOnTouch();
-}
 void handleEpub(Renderer *renderer, UIAction action)
 {
   if (!reader)
@@ -168,6 +147,7 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw)
   {
     ulog_i("main", "Creating epub list");
     epub_list = new EpubList(renderer, epub_list_state);
+    epub_list->setTouchControls(touch_controls);
     if (epub_list->load("/"))
     {
       ulog_i("main", "Epub files loaded");
@@ -191,15 +171,17 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw)
     if (epub_list_state.selected_item == -1) {
       // 打印"1"
       rt_kprintf("touch open or off\n");
-      touch_enable = !touch_enable;      
+      bool current_state = touch_controls->isTouchEnabled();
+      touch_controls->setTouchEnable(!current_state);      
+      
       // 刷新屏幕以更新底部区域的文本显示
-      if (touch_enable)
+      if (!current_state)  // 之前是关闭状态，现在要打开
       {                
-        tp_poweron();
+        touch_controls->powerOnTouch();
       }
-      else
+      else  // 之前是打开状态，现在要关闭
       {
-        tp_poweroff();
+        touch_controls->powerOffTouch();
       }
 
       epub_list->render();
@@ -280,7 +262,7 @@ void draw_charge_status(Renderer *renderer, Battery *battery)
 void handleUserInteraction(Renderer *renderer, UIAction ui_action, bool needs_redraw)
 {
     // 如果处于低电量模式，不处理任何用户操作
-    if (low_power == 1) 
+    if (battery && battery->get_low_power_state() == 1) 
     {
         return;
     }
@@ -359,8 +341,8 @@ void draw_welcome_page(Battery *battery)
       return;
     }
     lowpower_ui_state = WELCOME_PAGE;
-    tp_poweroff();
-    touch_enable = 0;   
+    touch_controls->powerOffTouch();
+    touch_controls->setTouchEnable(false);
     // 设置黑色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 0);
     if (battery) {
@@ -446,6 +428,39 @@ void draw_charge_page(Battery *battery)
     renderer->flush_display();
 }
 
+//关机页面
+void draw_shutdown_page()
+{
+    // 设置白色背景
+    renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
+    if (battery) {
+        renderer->set_margin_top(35);
+        draw_charge_status(renderer, battery);
+        draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
+    }
+
+    const int img_width = 200;
+    const int img_height = 200;
+    
+    int center_x = renderer->get_page_width() / 2;
+    int center_y = 35 + (renderer->get_page_height() - 35) / 2;
+    int x_pos = center_x - img_width / 2;
+    int y_pos = center_y - img_height / 2;
+    
+    EpdiyFrameBufferRenderer* fb_renderer = static_cast<EpdiyFrameBufferRenderer*>(renderer);
+    fb_renderer->show_img(x_pos, y_pos, img_width, img_height, shutdown_map);
+
+    const char *shutdown_text = "请长按 Key1 关机";
+    int text_width = renderer->get_text_width(shutdown_text);
+    int text_height = renderer->get_line_height();
+    
+    int text_x = center_x - text_width / 2;
+    int text_y = y_pos + img_height + 10;
+
+    renderer->draw_text(text_x, text_y, shutdown_text, false, true);
+    // 显示
+    renderer->flush_display();
+}
 void main_task(void *param)
 {
   // start the board up
@@ -506,26 +521,30 @@ void main_task(void *param)
   }
   touch_controls->render(renderer);
   renderer->flush_display();
-  if(!touch_enable)
+  if(!touch_controls->isTouchEnabled())
   {
-    tp_poweroff();
+    touch_controls->powerOffTouch();
   }
   board->sleep_filesystem();
   // keep track of when the user last interacted and go to sleep after N seconds
   rt_tick_t last_user_interaction = rt_tick_get_millisecond();
 
 
-while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
+while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //5小时无操作自动关机
 {
 
-    // 检查是否超过60秒无操作,如果是在欢迎页面、充电页面或低电量页面则不跳转
-    if (rt_tick_get_millisecond() - last_user_interaction >= 60 * 1000 && low_power != 1 && strcmp(getCurrentPageName(), "WELCOME_PAGE") != 0 && strcmp(getCurrentPageName(), "CHARGING_PAGE") != 0  && strcmp(getCurrentPageName(), "LOW_POWER_PAGE") != 0)
+    // 检查是否超过5分钟无操作,如果是在欢迎页面、充电页面或低电量页面则不跳转
+    if (rt_tick_get_millisecond() - last_user_interaction >= 60 * 1000 *5 && 
+        battery && battery->get_low_power_state() != 1 && 
+        strcmp(getCurrentPageName(), "WELCOME_PAGE") != 0 && 
+        strcmp(getCurrentPageName(), "CHARGING_PAGE") != 0  && 
+        strcmp(getCurrentPageName(), "LOW_POWER_PAGE") != 0)
     {
         draw_welcome_page(battery);      
     }
     uint32_t msg_data;
-    if (rt_mq_recv(ui_queue, &msg_data, sizeof(uint32_t), rt_tick_from_millisecond(60000)) == RT_EOK)
-{
+    if (rt_mq_recv(ui_queue, &msg_data, sizeof(uint32_t), rt_tick_from_millisecond(60500)) == RT_EOK) //一分钟自动刷一下
+    {
     UIAction ui_action = (UIAction)msg_data;
     
     // 检查是否是电池UI消息
@@ -570,8 +589,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
               handleUserInteraction(renderer, ui_action, false);
               board->sleep_filesystem();
           }
-      }
-            
+      }         
             // // make sure to clear the feedback on the touch controls
             touch_controls->render(renderer);
         }
@@ -595,6 +613,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 *100)
   // turn off the filesystem
   board->stop_filesystem();
   // get ready to go to sleep
+  draw_shutdown_page();
   board->prepare_to_sleep();
   //ESP_ERROR_CHECK(esp_sleep_enable_ulp_wakeup());
   ulog_i("main", "Entering deep sleep");

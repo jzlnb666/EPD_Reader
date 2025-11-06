@@ -18,9 +18,11 @@ extern "C" {
   #include <rtthread.h>
 #endif
 #include <warning.h>
-
+#include "boards/controls/TouchControls.h"
 class Epub;
 class Renderer;
+
+
 
 class EpubList
 {
@@ -28,9 +30,10 @@ private:
   Renderer *renderer;
   EpubListState &state;
   bool m_needs_redraw = false;
-
+   TouchControls* touch_controls = nullptr;  
 public:
   EpubList(Renderer *renderer, EpubListState &state) : renderer(renderer), state(state){};
+  void setTouchControls(TouchControls* controls) { touch_controls = controls; }
   ~EpubList() {}
   bool load(const char *path);
   void set_needs_redraw() { m_needs_redraw = true; }

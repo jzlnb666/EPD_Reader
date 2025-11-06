@@ -16,12 +16,11 @@ private:
   UIAction last_action = NONE;
   
   
-  public:
+public:
   static rt_err_t tp_rx_indicate(rt_device_t dev, rt_size_t size);
   SF32_TouchControls(Renderer *renderer, ActionCallback_t on_action);
-  void render(Renderer *renderer);
-  void renderPressedState(Renderer *renderer, UIAction action, bool state = true);
-  void powerOffTouch();
-  void powerOnTouch();
-
+  void render(Renderer *renderer) override;
+  void renderPressedState(Renderer *renderer, UIAction action, bool state = true) override;
+  void powerOnTouch() override;   
+  void powerOffTouch() override;
 };

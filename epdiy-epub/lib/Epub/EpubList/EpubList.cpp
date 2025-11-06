@@ -2,7 +2,6 @@
 #include <string.h>
 
 
-extern uint8_t touch_enable;
 
 #ifndef UNIT_TEST
   #include <rtdbg.h>
@@ -247,7 +246,8 @@ void EpubList::render()
 
   renderer->fill_rect(rect_x, bottom_area_y, rect_width, rect_height, 255);
 
-  const char* text = (touch_enable == 1) ? "Touch : On" : "Touch : Off";
+  bool touch_state = touch_controls ? touch_controls->isTouchEnabled() : false;
+  const char* text = touch_state ? "Touch : On" : "Touch : Off";
 
   int text_height = renderer->get_line_height();
   int text_y = bottom_area_y + (rect_height - text_height) / 2;

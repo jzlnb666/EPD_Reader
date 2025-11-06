@@ -4,10 +4,12 @@
 
 
 static ActionCallback_t action_cbk ;
-extern uint8_t low_power; 
+class Battery;
+extern Battery* battery;
+
 void button_event_handler(int32_t pin, button_action_t action)
 {
-  if(!low_power)
+  if(!battery || !battery->get_low_power_state())
   {
 #ifdef BSP_USING_BOARD_SF32_OED_EPD_V11
     if (pin == EPD_KEY1)
@@ -59,9 +61,9 @@ static void dummy_button_event_handler(int32_t pin, button_action_t action)
 #ifdef USING_ADC_BUTTON
 static void adc_button_handler(uint8_t group_idx, int32_t pin, button_action_t button_action)
 {
-  rt_kprintf("low_power:%d\n", low_power);
+  rt_kprintf("low_power:%d\n", battery ? battery->get_low_power_state() : 0);
 
-    if(!low_power)
+    if(!battery || !battery->get_low_power_state())
     {
       rt_kprintf("adc_button_handler:%d,%d,%d\n", group_idx, pin, button_action);
       if (button_action == BUTTON_CLICKED)
