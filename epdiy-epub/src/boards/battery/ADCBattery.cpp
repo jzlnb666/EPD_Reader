@@ -27,7 +27,7 @@ void ADCBattery::start_battery_monitor()
     battery_check_timer = rt_timer_create("battery_check", 
                                         battery_check_callback, 
                                         this,  
-                                        rt_tick_from_millisecond(5000), // 5秒
+                                        rt_tick_from_millisecond(10000), // 10秒
                                         RT_TIMER_FLAG_PERIODIC | RT_TIMER_FLAG_SOFT_TIMER);
 
     if (battery_check_timer != RT_NULL) 

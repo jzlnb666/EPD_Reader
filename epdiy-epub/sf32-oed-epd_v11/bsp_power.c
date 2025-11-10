@@ -30,6 +30,28 @@ __WEAK void BSP_PowerUpCustom(bool is_deep_sleep)
 
 }
 
+HAL_RAM_RET_CODE_SECT(PowerDownCustom, void PowerDownCustom(void))
+{
+
+    HAL_PMU_SelectWakeupPin(0, 10);   // PA34
+    HAL_PMU_EnablePinWakeup(0, 0);
+
+    HAL_PIN_Set(PAD_PA24, GPIO_A24, PIN_PULLDOWN, 1);
+    for (uint32_t i = PAD_PA28; i <= PAD_PA44; i++)
+    {
+        HAL_PIN_Set(i, (pin_function)(i - PAD_PA28 + GPIO_A28), PIN_PULLDOWN, 1);
+    }
+    hwp_pmuc->PERI_LDO &=  ~(PMUC_PERI_LDO_EN_LDO18 | PMUC_PERI_LDO_EN_VDD33_LDO2 | PMUC_PERI_LDO_EN_VDD33_LDO3);
+    hwp_pmuc->WKUP_CNT = 0x000F000F;
+
+    
+
+    HAL_DisableInterrupt();
+    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO2_3V3, false, false);
+    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO_1V8, false, false);
+    HAL_PMU_EnterHibernate();
+
+}
 
 extern void *rt_flash_get_handle_by_addr(uint32_t addr);
 void BSP_Power_Up(bool is_deep_sleep)

@@ -21,33 +21,11 @@ extern const EpdFont italic_font;
 extern const EpdFont bold_italic_font;
 extern void SD_card_power_off();  
 extern void SD_card_power_on(); 
+extern void PowerDownCustom(void);
 }
 extern Battery *battery;
 
-HAL_RAM_RET_CODE_SECT(PowerDownCustom, void PowerDownCustom(void))
-{
-    rt_kprintf("PowerDownCustom\n");
 
-    HAL_PMU_SelectWakeupPin(0, 10);   // PA34
-    HAL_PMU_EnablePinWakeup(0, 0);
-
-    HAL_PIN_Set(PAD_PA24, GPIO_A24, PIN_PULLDOWN, 1);
-    for (uint32_t i = PAD_PA28; i <= PAD_PA44; i++)
-    {
-        HAL_PIN_Set(i, (pin_function)(i - PAD_PA28 + GPIO_A28), PIN_PULLDOWN, 1);
-    }
-    hwp_pmuc->PERI_LDO &=  ~(PMUC_PERI_LDO_EN_LDO18 | PMUC_PERI_LDO_EN_VDD33_LDO2 | PMUC_PERI_LDO_EN_VDD33_LDO3);
-    hwp_pmuc->WKUP_CNT = 0x000F000F;
-
-    
-
-    rt_hw_interrupt_disable();
-    rt_kprintf("PowerDownCustom2\n");
-    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO2_3V3, false, false);
-    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO_1V8, false, false);
-    HAL_PMU_EnterHibernate();
-    rt_kprintf("PowerDownCustom3\n");
-}
 void SF32Paper::sleep_filesystem()
 {
     SD_card_power_off();

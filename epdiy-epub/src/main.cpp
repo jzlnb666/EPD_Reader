@@ -264,6 +264,7 @@ void handleUserInteraction(Renderer *renderer, UIAction ui_action, bool needs_re
     // 如果处于低电量模式，不处理任何用户操作
     if (battery && battery->get_low_power_state() == 1) 
     {
+        rt_kprintf("low power state\n");
         return;
     }
     
@@ -450,7 +451,7 @@ void draw_shutdown_page()
     EpdiyFrameBufferRenderer* fb_renderer = static_cast<EpdiyFrameBufferRenderer*>(renderer);
     fb_renderer->show_img(x_pos, y_pos, img_width, img_height, shutdown_map);
 
-    const char *shutdown_text = "请长按 Key1 关机";
+    const char *shutdown_text = "请长按 Key1 开机";
     int text_width = renderer->get_text_width(shutdown_text);
     int text_height = renderer->get_line_height();
     
