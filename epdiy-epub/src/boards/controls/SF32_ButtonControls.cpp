@@ -4,9 +4,6 @@
 
 
 static ActionCallback_t action_cbk ;
-class Battery;
-extern Battery* battery;
-
 void button_event_handler(int32_t pin, button_action_t action)
 {
 
@@ -60,7 +57,6 @@ static void dummy_button_event_handler(int32_t pin, button_action_t action)
 #ifdef USING_ADC_BUTTON
 static void adc_button_handler(uint8_t group_idx, int32_t pin, button_action_t button_action)
 {
-  rt_kprintf("low_power:%d\n", battery ? battery->get_low_power_state() : 0);
   rt_kprintf("adc_button_handler:%d,%d,%d\n", group_idx, pin, button_action);
   if (button_action == BUTTON_CLICKED)
   {
