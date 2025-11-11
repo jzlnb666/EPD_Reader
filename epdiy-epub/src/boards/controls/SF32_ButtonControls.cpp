@@ -4,41 +4,46 @@
 
 
 static ActionCallback_t action_cbk ;
-
 void button_event_handler(int32_t pin, button_action_t action)
 {
-#ifdef BSP_USING_BOARD_SF32_OED_EPD_V11
-  if (pin == EPD_KEY1)
-  {
-      if (action == BUTTON_CLICKED)
-      {
-          action_cbk(UIAction::UP); 
-      }
-  }
-#else
-  if (pin == EPD_KEY1)
-  {
-      if (action == BUTTON_CLICKED)
-      {
-          action_cbk(UIAction::DOWN); 
-      }
-  }
 
-  else if (pin == EPD_KEY2)
-  {
-      if (action == BUTTON_CLICKED)
-      {
-          action_cbk(UIAction::SELECT); 
-      }
-  }
-  else if (pin == EPD_KEY3)
-  {
-      if (action == BUTTON_CLICKED)
-      {
-          action_cbk(UIAction::UP); 
-      }
-  }
+#ifdef BSP_USING_BOARD_SF32_OED_EPD_V11
+    if (pin == EPD_KEY1)
+    {
+        if (action == BUTTON_CLICKED)
+        {
+            action_cbk(UIAction::UP); 
+        }
+    }
+  #else
+    if (pin == EPD_KEY1)
+    {
+        if (action == BUTTON_CLICKED)
+        {
+            action_cbk(UIAction::DOWN); 
+        }
+    }
+
+    else if (pin == EPD_KEY2)
+    {
+        if (action == BUTTON_CLICKED)
+        {
+            action_cbk(UIAction::SELECT); 
+        }
+        else if (action == BUTTON_LONG_PRESSED)
+        {
+            rt_kprintf("长按   1");
+        }
+    }
+    else if (pin == EPD_KEY3)
+    {
+        if (action == BUTTON_CLICKED)
+        {
+            action_cbk(UIAction::UP); 
+        }
+    }
 #endif
+  
 }
 
 #ifdef EPD_KEY_GPADC
@@ -52,12 +57,13 @@ static void dummy_button_event_handler(int32_t pin, button_action_t action)
 #ifdef USING_ADC_BUTTON
 static void adc_button_handler(uint8_t group_idx, int32_t pin, button_action_t button_action)
 {
-    rt_kprintf("adc_button_handler:%d,%d,%d\n", group_idx, pin, button_action);
-      if (button_action == BUTTON_CLICKED)
-      {
-        if (0 == pin)        action_cbk(UIAction::SELECT);
-        else if (1 == pin)   action_cbk(UIAction::DOWN);
-      }
+  rt_kprintf("adc_button_handler:%d,%d,%d\n", group_idx, pin, button_action);
+  if (button_action == BUTTON_CLICKED)
+  {
+    if (0 == pin)        action_cbk(UIAction::SELECT);
+    else if (1 == pin)   action_cbk(UIAction::DOWN);
+  }
+    
 }
 
 #endif /* USING_ADC_BUTTON */

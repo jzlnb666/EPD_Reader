@@ -158,6 +158,7 @@ static uint32_t LCD_ReadID(LCDC_HandleTypeDef *hlcdc)
 static void LCD_DisplayOn(LCDC_HandleTypeDef *hlcdc)
 {
     /* Display On */
+    
 }
 
 /**
@@ -168,6 +169,7 @@ static void LCD_DisplayOn(LCDC_HandleTypeDef *hlcdc)
 static void LCD_DisplayOff(LCDC_HandleTypeDef *hlcdc)
 {
     /* Display Off */
+ 
 }
 
 static void LCD_SetRegion(LCDC_HandleTypeDef *hlcdc, uint16_t Xpos0, uint16_t Ypos0, uint16_t Xpos1, uint16_t Ypos1)
@@ -538,7 +540,7 @@ L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeD
     EPD_STV_H_hs();
     EPD_CPV_L_hs();
     EPD_GMODE_H_hs();
-
+    TPS_WAKEUP_H_hs();
 
 
 
@@ -664,7 +666,7 @@ L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeD
 
     EPD_GMODE_L_hs();
     EPD_STV_L_hs();
-
+    TPS_WAKEUP_L_hs();
     /* Simulate LCDC IRQ handler, call user callback */
     if (hlcdc->XferCpltCallback)
     {

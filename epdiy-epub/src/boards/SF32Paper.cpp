@@ -4,11 +4,14 @@
 #include <hourglass.h>
 #include "SF32_ButtonControls.h"
 #include "SF32_TouchControls.h"
-
+#include "battery/ADCBattery.h"
 extern "C" {
 #include "dfs_fs.h"
 #include "mem_map.h"
 #include "rtdevice.h"
+#include "bf0_hal_aon.h"
+#include "spi_msd.h"
+#include "bf0_pm.h"
 #ifndef _WIN32
     #include "drv_flash.h"
 #endif /* _WIN32 */
@@ -16,18 +19,99 @@ extern const EpdFont regular_font;
 extern const EpdFont bold_font;
 extern const EpdFont italic_font;
 extern const EpdFont bold_italic_font;
+extern void SD_card_power_off();  
+extern void SD_card_power_on(); 
+extern void PowerDownCustom(void);
+}
+extern Battery *battery;
 
+
+void SF32Paper::sleep_filesystem()
+{
+    SD_card_power_off();
 }
 
+void SF32Paper::wakeup_filesystem()
+{
+    SD_card_power_on();
+    int card_state=rt_pin_read(27); /*card detect pin*/
+    if(card_state == 0)
+    {
+        rt_kprintf("SD card inserted\n");
+        msd_reinit();
+    }
+    else 
+    {
+        rt_kprintf("SD card removed\n");
+    }
 
+}
 void SF32Paper::power_up()
 {
-  // nothing to do for this board - should probably move the power up from
-  // the driver to here?
+    switch (SystemPowerOnModeGet())
+    {
+        case PM_REBOOT_BOOT:
+        case PM_COLD_BOOT:
+        {
+            // power on as normal
+            break;
+        }
+        case PM_HIBERNATE_BOOT:
+        case PM_SHUTDOWN_BOOT:
+        {
+            if (PMUC_WSR_RTC & pm_get_wakeup_src())
+            {
+                // RTC唤醒
+                NVIC_EnableIRQ(RTC_IRQn);
+                // power on as normal
+            }
+            #ifdef BSP_USING_CHARGER
+            else if ((PMUC_WSR_PIN0 << (pm_get_charger_pin_wakeup())) & pm_get_wakeup_src())
+            {
+            }
+            #endif
+            else if (PMUC_WSR_PIN_ALL & pm_get_wakeup_src())
+            {
+                rt_thread_mdelay(1000); // 延时1秒
+                int val = rt_pin_read(34);//EPD_KEY3
+                rt_kprintf("Power key level after 1s: %d\n", val);
+                if (val != 1)
+                {
+                    // 按键已松开，认为是误触发，直接关机
+                    rt_kprintf("Not long press, shutdown now.\n");
+                    PowerDownCustom();
+                    while (1) {};
+                }
+                else
+                {
+                    // 长按，正常开机
+                    rt_kprintf("Long press detected, power on as normal.\n");
+                    
+                }
+            }
+            else if (0 == pm_get_wakeup_src())
+            {
+                RT_ASSERT(0);
+            }
+            break;
+        }
+        default:
+        {
+            RT_ASSERT(0);
+        }
+    }
+    HAL_LPAON_Sleep();
 }
 void SF32Paper::prepare_to_sleep()
 {
-  
+    SD_card_power_off();
+    if (battery) 
+    {
+        ADCBattery* adc_battery = static_cast<ADCBattery*>(battery);
+        adc_battery->stop_battery_monitor();
+    }
+   
+    PowerDownCustom();
 }
 Renderer *SF32Paper::get_renderer()
 {

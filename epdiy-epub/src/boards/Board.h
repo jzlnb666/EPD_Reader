@@ -33,9 +33,13 @@ public:
   virtual void start_filesystem();
   // stop the filesystem
   virtual void stop_filesystem();
+  //sleep the filesystem
+  virtual void sleep_filesystem() {}
+  //wake up the filesystem
+  virtual void wakeup_filesystem() {}
   // get the battery monitoring object - the default behaviour is to use the build in
   // ADC if BATTERY_ADC_CHANNEL is defined
-  virtual Battery *get_battery();
+  virtual Battery *get_battery(rt_mq_t ui_queue);
 
   // get the button controls object
   virtual ButtonControls *get_button_controls(rt_mq_t ui_queue) = 0;
