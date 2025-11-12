@@ -307,21 +307,29 @@ void back_to_main_page()
         return;
       }
       lowpower_ui_state = MAIN_MENU;
-      ui_state = SELECTING_EPUB;
+      if (ui_state == SELECTING_TABLE_CONTENTS) 
+      {
+        if (contents) 
+        {
+            delete contents;
+            contents = nullptr;
+        }
+    }
       bool hydrate_success = renderer->hydrate();
 
       renderer->reset();
       renderer->set_margin_top(35);
       renderer->set_margin_left(10);
       renderer->set_margin_right(10);
-      
+     
       if (!epub_list) 
       {
         epub_list = new EpubList(renderer, epub_list_state);
-        if (epub_list->load("/")) {
+        if (epub_list->load("/")) 
+        {
             ulog_i("main", "Epub files loaded");
         }
-    }
+      }
       handleUserInteraction(renderer, NONE, true);
       
       if (battery)
@@ -376,6 +384,7 @@ void draw_low_power_page(Battery *battery)
         return;
     }
     lowpower_ui_state = LOW_POWER_PAGE;  
+    
     // 设置黑色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 0);
     if (battery) {
@@ -581,6 +590,10 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
               if(strcmp(getCurrentPageName(), "WELCOME_PAGE") == 0)
               {
                 back_to_main_page();
+                
+                last_user_interaction = rt_tick_get_millisecond();
+                board->sleep_filesystem();
+                continue;
               }                     
               //rt_kprintf("ui_action = %d\n", ui_action);
               // something happened!
@@ -588,6 +601,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
               // show feedback on the touch controls
               touch_controls->renderPressedState(renderer, ui_action);
               handleUserInteraction(renderer, ui_action, false);
+              
               board->sleep_filesystem();
           }
       }         
