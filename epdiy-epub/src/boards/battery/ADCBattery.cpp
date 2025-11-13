@@ -7,6 +7,18 @@ extern "C" {
 #include "board.h"
 }
 
+static void chg_status_irq_callback(void* args)
+{
+    ADCBattery* battery = static_cast<ADCBattery*>(args);
+    if (battery && battery->ui_queue) 
+    {
+        // 发送刷新充电状态的消息
+        UIAction msg = MSG_UPDATE_CHARGE_STATUS;
+        rt_mq_send(battery->ui_queue, &msg, sizeof(UIAction));
+        rt_kprintf("charge status changed\n");
+
+    }
+}
 ADCBattery::ADCBattery(rt_mq_t ui_queue)
 {
     this->ui_queue = ui_queue;  
@@ -18,6 +30,11 @@ ADCBattery::ADCBattery(rt_mq_t ui_queue)
         rt_adc_enable((rt_adc_device_t)s_adc_dev, channel);
     }
     battery_check_timer = RT_NULL;
+
+     // 启用中断
+    rt_pin_mode(CHG_STATUS, PIN_MODE_INPUT_PULLUP);
+    rt_pin_attach_irq(CHG_STATUS, PIN_IRQ_MODE_RISING_FALLING, chg_status_irq_callback, this);
+    rt_pin_irq_enable(CHG_STATUS, PIN_IRQ_ENABLE);
 }
 
 
@@ -88,6 +105,9 @@ void ADCBattery::stop_battery_monitor()
 
 ADCBattery::~ADCBattery()
 {
+
+    rt_pin_irq_enable(CHG_STATUS, PIN_IRQ_DISABLE);
+    rt_pin_detach_irq(CHG_STATUS);
     if (battery_check_timer != RT_NULL)
     {
         rt_timer_stop(battery_check_timer);
