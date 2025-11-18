@@ -122,8 +122,13 @@ void oedtps_init(uint16_t vcom_voltage)
         .timeout = 500,
         .max_hz  = 400000,
     };
-    p_i2c_bus = (struct rt_i2c_bus_device *)rt_device_find("i2c1");
 
+    if (p_i2c_bus != NULL)
+    {
+        rt_device_close((rt_device_t)p_i2c_bus);
+    }
+    p_i2c_bus = (struct rt_i2c_bus_device *)rt_device_find("i2c1");
+ 
     if (p_i2c_bus)
     {
         rt_device_open((rt_device_t)p_i2c_bus, RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_TX | RT_DEVICE_FLAG_INT_RX);

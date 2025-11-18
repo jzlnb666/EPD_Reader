@@ -5,7 +5,7 @@ extern "C" {
 #include "board.h"
 }
 
-
+static void chg_status_irq_callback(void* args);
 class ADCBattery : public Battery
 {
 private:
@@ -30,4 +30,6 @@ public:
     void set_low_power_state(uint8_t state); 
     void stop_battery_monitor(); 
     ~ADCBattery();
+
+    friend void chg_status_irq_callback(void* args);
 };

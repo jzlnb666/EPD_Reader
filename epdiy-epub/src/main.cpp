@@ -227,6 +227,17 @@ void draw_battery_level(Renderer *renderer, float voltage, float percentage)
   // put the margin back
   renderer->set_margin_top(35);
 }
+void clear_charge_icon(Renderer *renderer)
+{
+    const int icon_size = 30;
+    int battery_width = 40;
+    int margin_right = 0;
+    int margin_top = 0;
+    int xpos = renderer->get_page_width() - battery_width - margin_right - icon_size - 4;
+    int ypos = margin_top;
+    
+    renderer->fill_rect(xpos, ypos - 30, icon_size, icon_size, 255);
+}
 void draw_lightning(Renderer *renderer, int x, int y, int size) {
     const float tilt_factor = 0.3f;
     int tri1_A_x = x + 1;
@@ -255,9 +266,16 @@ void draw_charge_status(Renderer *renderer, Battery *battery)
     int xpos = renderer->get_page_width() - battery_width - margin_right - icon_size - 4;
     int ypos = margin_top;
     
-    if (battery->is_charging()) {
-        draw_lightning(renderer, xpos + icon_size/2, ypos + icon_size/2, icon_size);
+    if (battery->is_charging()) 
+    {
+      rt_kprintf("充电中\n");  
+      draw_lightning(renderer, xpos + icon_size/2, ypos + icon_size/2, icon_size);
     } 
+    else 
+    {
+      rt_kprintf("不充电\n");
+      clear_charge_icon(renderer);
+    }
 }
 void handleUserInteraction(Renderer *renderer, UIAction ui_action, bool needs_redraw)
 {
@@ -307,21 +325,29 @@ void back_to_main_page()
         return;
       }
       lowpower_ui_state = MAIN_MENU;
-      ui_state = SELECTING_EPUB;
+      if (ui_state == SELECTING_TABLE_CONTENTS) 
+      {
+        if (contents) 
+        {
+            delete contents;
+            contents = nullptr;
+        }
+    }
       bool hydrate_success = renderer->hydrate();
 
       renderer->reset();
       renderer->set_margin_top(35);
       renderer->set_margin_left(10);
       renderer->set_margin_right(10);
-      
+     
       if (!epub_list) 
       {
         epub_list = new EpubList(renderer, epub_list_state);
-        if (epub_list->load("/")) {
+        if (epub_list->load("/")) 
+        {
             ulog_i("main", "Epub files loaded");
         }
-    }
+      }
       handleUserInteraction(renderer, NONE, true);
       
       if (battery)
@@ -376,6 +402,7 @@ void draw_low_power_page(Battery *battery)
         return;
     }
     lowpower_ui_state = LOW_POWER_PAGE;  
+    
     // 设置黑色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 0);
     if (battery) {
@@ -548,6 +575,18 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
     {
     UIAction ui_action = (UIAction)msg_data;
     
+    // 检查是否是更新充电状态的消息
+    if (ui_action == MSG_UPDATE_CHARGE_STATUS)
+    {
+        rt_kprintf("Charge status changed\n");
+        if (battery)
+        {
+            draw_charge_status(renderer, battery);
+            draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
+            renderer->flush_display();
+        }
+        continue;
+    }
     // 检查是否是电池UI消息
     if (ui_action == MSG_DRAW_LOW_POWER_PAGE || ui_action == MSG_DRAW_CHARGE_PAGE || ui_action == MSG_DRAW_WELCOME_PAGE)
     {
@@ -581,6 +620,10 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
               if(strcmp(getCurrentPageName(), "WELCOME_PAGE") == 0)
               {
                 back_to_main_page();
+                
+                last_user_interaction = rt_tick_get_millisecond();
+                board->sleep_filesystem();
+                continue;
               }                     
               //rt_kprintf("ui_action = %d\n", ui_action);
               // something happened!
@@ -588,8 +631,9 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
               // show feedback on the touch controls
               touch_controls->renderPressedState(renderer, ui_action);
               handleUserInteraction(renderer, ui_action, false);
+              
               board->sleep_filesystem();
-          }
+        }
       }         
             // // make sure to clear the feedback on the touch controls
             touch_controls->render(renderer);
