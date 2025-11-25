@@ -268,12 +268,10 @@ void draw_charge_status(Renderer *renderer, Battery *battery)
     
     if (battery->is_charging()) 
     {
-      rt_kprintf("充电中\n");  
       draw_lightning(renderer, xpos + icon_size/2, ypos + icon_size/2, icon_size);
     } 
     else 
     {
-      rt_kprintf("不充电\n");
       clear_charge_icon(renderer);
     }
 }
@@ -461,7 +459,8 @@ void draw_shutdown_page()
 {
     // 设置白色背景
     renderer->fill_rect(0, 0, renderer->get_page_width(), renderer->get_page_height(), 255);
-    if (battery) {
+    if (battery) 
+    {
         renderer->set_margin_top(35);
         draw_charge_status(renderer, battery);
         draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
@@ -674,6 +673,7 @@ extern "C"
   int main()
   {
     // dump out the epub list state
+    //rt_pm_request(PM_SLEEP_MODE_IDLE); 
     ulog_i("main", "epub list state num_epubs=%d", epub_list_state.num_epubs);
     ulog_i("main", "epub list state is_loaded=%d", epub_list_state.is_loaded);
     ulog_i("main", "epub list state selected_item=%d", epub_list_state.selected_item);

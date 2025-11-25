@@ -3,9 +3,11 @@
 extern "C" {
 #include "rtdevice.h"
 #include "board.h"
+#include "battery_calculator.h"
+#include "charge.h"
 }
 
-static void chg_status_irq_callback(void* args);
+
 class ADCBattery : public Battery
 {
 private:
@@ -15,7 +17,10 @@ private:
     rt_mq_t ui_queue;
     uint8_t low_power; 
 
+    battery_calculator_t battery_calc;
+
     static void battery_check_callback(void* parameter);
+    static rt_err_t charge_event_callback(rt_device_t dev, rt_size_t size);
     void start_battery_monitor();
 
 public:
@@ -31,5 +36,5 @@ public:
     void stop_battery_monitor(); 
     ~ADCBattery();
 
-    friend void chg_status_irq_callback(void* args);
+    
 };

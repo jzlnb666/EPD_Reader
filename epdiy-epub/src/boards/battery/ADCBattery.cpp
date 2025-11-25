@@ -5,19 +5,35 @@
 extern "C" {
 #include "rtdevice.h"
 #include "board.h"
+#include "battery_calculator.h"
 }
 
-static void chg_status_irq_callback(void* args)
+rt_err_t ADCBattery::charge_event_callback(rt_device_t dev, rt_size_t size)
 {
-    ADCBattery* battery = static_cast<ADCBattery*>(args);
-    if (battery && battery->ui_queue) 
+    rt_charge_event_t event = (rt_charge_event_t)size;
+    
+    switch (event)
     {
-        // 发送刷新充电状态的消息
-        UIAction msg = MSG_UPDATE_CHARGE_STATUS;
-        rt_mq_send(battery->ui_queue, &msg, sizeof(UIAction));
-        rt_kprintf("charge status changed\n");
-
+        case RT_CHARGE_EVENT_DETECT:
+        {
+            rt_kprintf("Charge detect event\n");
+            extern rt_mq_t ui_queue;
+            if (ui_queue) 
+            {
+                // 发送刷新充电状态的消息
+                UIAction msg = MSG_UPDATE_CHARGE_STATUS;
+                rt_mq_send(ui_queue, &msg, sizeof(UIAction));
+            }
+            break;
+        }
+        case RT_CHARGE_EVENT_END:
+            rt_kprintf("Charge end event\n");
+            break;
+        default:
+            break;
     }
+    
+    return RT_EOK;
 }
 ADCBattery::ADCBattery(rt_mq_t ui_queue)
 {
@@ -31,10 +47,27 @@ ADCBattery::ADCBattery(rt_mq_t ui_queue)
     }
     battery_check_timer = RT_NULL;
 
-     // 启用中断
-    rt_pin_mode(CHG_STATUS, PIN_MODE_INPUT_PULLUP);
-    rt_pin_attach_irq(CHG_STATUS, PIN_IRQ_MODE_RISING_FALLING, chg_status_irq_callback, this);
-    rt_pin_irq_enable(CHG_STATUS, PIN_IRQ_ENABLE);
+    // 初始化电池计算器
+    static const battery_calculator_config_t config = {
+        .charging_table = charging_curve_table,
+        .charging_table_size = charging_curve_table_size,
+        .discharging_table = discharge_curve_table,
+        .discharging_table_size = discharge_curve_table_size,
+        .charge_filter_threshold = 50,          // 充电状态下的电压变化滤波阈值(mV)
+        .discharge_filter_threshold = 50,       // 放电状态下的电压变化滤波阈值(mV)
+        .filter_count = 3,                      // 滤波计数阈值
+        .secondary_filter_enabled = true,       // 启用二级滤波
+        .secondary_filter_weight_pre = 90,      // 上次电压权重
+        .secondary_filter_weight_cur = 10       // 当前电压权重
+    };
+    
+    int result = battery_calculator_init(&battery_calc, &config);
+    if (result != BATTERY_CALC_SUCCESS) 
+    {
+        rt_kprintf("[ADCBattery] Failed to initialize battery calculator: %d\n", result);
+    }
+
+   
 }
 
 
@@ -61,6 +94,11 @@ void ADCBattery::setup()
 {
     rt_kprintf("[ADCBattery] setup completed\n");
     start_battery_monitor();
+   
+    // 注册事件回调函数
+    rt_charge_set_rx_ind(charge_event_callback);
+    rt_kprintf("[ADCBattery] Charge device found and callback registered\n");
+    
 }
 float ADCBattery::get_voltage()
 {
@@ -75,16 +113,9 @@ float ADCBattery::get_voltage()
 
 int ADCBattery::get_percentage()
 {
-    auto voltage = get_voltage() / 1000.0f;
-    if (voltage >= 4.20)
-    {
-        return 100;
-    }
-    if (voltage <= 3.50)
-    {
-        return 0;
-    }
-    return roundf(2836.9625 * pow(voltage, 4) - 43987.4889 * pow(voltage, 3) + 255233.8134 * pow(voltage, 2) - 656689.7123 * voltage + 632041.7303);
+    float voltage = get_voltage();
+    uint8_t percentage = battery_calculator_get_percent(&battery_calc, (uint32_t)(voltage * 10));
+    return percentage;
 }
 
 bool ADCBattery::is_charging()
@@ -105,9 +136,8 @@ void ADCBattery::stop_battery_monitor()
 
 ADCBattery::~ADCBattery()
 {
-
-    rt_pin_irq_enable(CHG_STATUS, PIN_IRQ_DISABLE);
-    rt_pin_detach_irq(CHG_STATUS);
+    rt_charge_set_rx_ind(RT_NULL);
+    
     if (battery_check_timer != RT_NULL)
     {
         rt_timer_stop(battery_check_timer);
@@ -121,7 +151,7 @@ void ADCBattery::battery_check_callback(void* parameter)
     if (battery && battery->ui_queue) 
     {
         float voltage = battery->get_voltage();
-        float percentage = battery->get_percentage();
+        uint8_t percentage = battery_calculator_get_percent(&battery->battery_calc, (uint32_t)(voltage * 10));
         bool is_charging = battery->is_charging();
         rt_kprintf("[ADCBattery] Battery Level %f, percent %d\n", voltage, (int)percentage);
         
@@ -147,13 +177,13 @@ void ADCBattery::battery_check_callback(void* parameter)
     }
 }
 
-// 实现获取low_power状态的方法
+// 获取low_power状态
 bool ADCBattery::get_low_power_state() 
 {
     return low_power;
 }
 
-// 实现设置low_power状态的方法
+// 设置low_power状态
 void ADCBattery::set_low_power_state(uint8_t state) 
 {
     low_power = state;
