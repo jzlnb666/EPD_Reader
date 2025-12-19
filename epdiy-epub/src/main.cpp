@@ -589,7 +589,7 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
                 charge_full = true;
                 rt_kprintf("Battery level is full, skip sending charge status update message\n");
             }
-            else
+            else if(percentage < 98)
             {
                 rt_kprintf("Charge status changed\n");
                 charge_full = false;
