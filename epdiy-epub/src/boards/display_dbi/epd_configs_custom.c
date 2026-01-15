@@ -11,9 +11,6 @@
 
 
 
-#define PART_DISP_TIMES       10        // After PART_DISP_TIMES-1 partial refreshes, perform a full refresh once
-static int reflesh_times = 0;
-
 
 void epd_wave_table(void)
 {
@@ -28,14 +25,11 @@ void epd_wave_table(void)
 uint32_t epd_wave_table_get_frames(int temperature, EpdDrawMode mode)
 {
     uint32_t frames = 0;
-    if (reflesh_times % PART_DISP_TIMES == 0) {
+    if (mode = = EPD_DRAW_MODE_FULL) {
         frames = waveform_bin_reader_get_frames(temperature, EPD_DRAW_MODE_FULL);
-        reflesh_times = 0;
     } else {
         frames = waveform_bin_reader_get_frames(temperature, EPD_DRAW_MODE_PARTIAL);
     }
-    reflesh_times++;
-
     return frames;
 }
 
