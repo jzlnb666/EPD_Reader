@@ -3,8 +3,7 @@
 #include "mem_section.h"
 #include "string.h"
 #if defined(LCD_USING_EPD_YZC085_V100) || defined(LCD_USING_EPD_YZC146_V100)
-#define PART_DISP_TIMES       10        // After PART_DISP_TIMES-1 partial refreshes, perform a full refresh once
-static int reflesh_times = 0;
+
 
 // 8bit lookup table for the current frame (high 4 bits: old data, low 4 bits: new data).
 // The output is 2-bit data.
@@ -84,8 +83,7 @@ void epd_wave_table(void)
 uint32_t epd_wave_table_get_frames(int temperature, EpdDrawMode mode)
 {
     const WaveTableEntry *wave_table = NULL;
-
-    if (reflesh_times % PART_DISP_TIMES == 0) {
+    if (EPD_DRAW_MODE_FULL == mode) {
 
         wave_table = &full_wave_table;
     } else {
@@ -96,7 +94,6 @@ uint32_t epd_wave_table_get_frames(int temperature, EpdDrawMode mode)
         wave_table = &full_wave_table;
     }
     p_current_wave_from = (const uint8_t *)&wave_table->wave_table[0][0];
-    reflesh_times++;
 
     return wave_table->frame_count;
 }
