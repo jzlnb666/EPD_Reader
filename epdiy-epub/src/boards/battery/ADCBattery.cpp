@@ -16,10 +16,10 @@ rt_err_t ADCBattery::charge_event_callback(rt_device_t dev, rt_size_t size)
     {
         case RT_CHARGE_EVENT_DETECT:
         {
-            rt_kprintf("Charge detect event\n");
             extern rt_mq_t ui_queue;
             if (ui_queue) 
             {
+                //rt_kprintf("Charge detect event\n");
                 // 发送刷新充电状态的消息
                 UIAction msg = MSG_UPDATE_CHARGE_STATUS;
                 rt_mq_send(ui_queue, &msg, sizeof(UIAction));
@@ -154,7 +154,7 @@ void ADCBattery::battery_check_callback(void* parameter)
         uint8_t percentage = battery_calculator_get_percent(&battery->battery_calc, (uint32_t)(voltage * 10));
         bool is_charging = battery->is_charging();
         rt_kprintf("[ADCBattery] Battery Level %f, percent %d\n", voltage, (int)percentage);
-        
+    
         // 发送消息到UI队列
         if (percentage < 2.0f && !is_charging && battery->low_power != 1) {
             battery->low_power = 1;        

@@ -61,6 +61,7 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw);
 static EpubList *epub_list = nullptr;
 static EpubReader *reader = nullptr;
 static EpubToc *contents = nullptr;
+static bool charge_full = false;
 Battery *battery = nullptr;
 // 声明全局变量，以便open_tp_lcd和close_tp_lcd函数可以访问
 Renderer *renderer = nullptr;
@@ -576,13 +577,26 @@ while (rt_tick_get_millisecond() - last_user_interaction < 60 * 1000 * 60 *5) //
     
     // 检查是否是更新充电状态的消息
     if (ui_action == MSG_UPDATE_CHARGE_STATUS)
-    {
-        rt_kprintf("Charge status changed\n");
+    {       
+        
         if (battery)
         {
-            draw_charge_status(renderer, battery);
-            draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
-            renderer->flush_display();
+            int percentage = battery->get_percentage();
+            if (percentage >= 98 && charge_full == false) 
+            {
+                clear_charge_icon(renderer);
+                renderer->flush_display();
+                charge_full = true;
+                rt_kprintf("Battery level is full, skip sending charge status update message\n");
+            }
+            else if(percentage < 98)
+            {
+                rt_kprintf("Charge status changed\n");
+                charge_full = false;
+                draw_charge_status(renderer, battery);
+                draw_battery_level(renderer, battery->get_voltage(), battery->get_percentage());
+                renderer->flush_display();
+            }        
         }
         continue;
     }
