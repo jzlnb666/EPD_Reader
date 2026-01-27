@@ -4,4 +4,4 @@ config BSP_USING_BOARD_SF32_OED_EPD_V12
     select BF0_HCPU
     default y
 
-rsource "../Kconfig.board"
+rsource "../../sf32-oed-epd_base/Kconfig.board"
