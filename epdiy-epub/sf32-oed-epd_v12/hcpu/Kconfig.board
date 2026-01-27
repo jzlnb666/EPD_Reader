@@ -1,4 +1,4 @@
-config BSP_USING_BOARD_SF32_OED_EPD_V11
+config BSP_USING_BOARD_SF32_OED_EPD_V12
     bool
     select SOC_SF32LB52X
     select BF0_HCPU
