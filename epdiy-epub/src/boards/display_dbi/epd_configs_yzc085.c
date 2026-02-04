@@ -2,7 +2,9 @@
 #include "epd_configs.h"
 #include "mem_section.h"
 #include "string.h"
-#if defined(LCD_USING_EPD_YZC085_V100) || defined(LCD_USING_EPD_YZC146_V100)
+
+#if defined(LCD_USING_EPD_YZC085_V100) || defined(LCD_USING_EPD_YZC146_V100) || defined(LCD_USING_EPD_YZC085_V100_V12)
+
 
 
 // 8bit lookup table for the current frame (high 4 bits: old data, low 4 bits: new data).
@@ -111,7 +113,7 @@ void epd_wave_table_fill_lut(uint32_t *p_epic_lut, uint32_t frame_num)
 
 uint16_t epd_get_vcom_voltage(void)
 {
-#if defined(LCD_USING_EPD_YZC085_V100) || defined(LCD_USING_EPD_YZC146_V100)
+#if defined(LCD_USING_EPD_YZC085_V100) || defined(LCD_USING_EPD_YZC146_V100) || defined(LCD_USING_EPD_YZC085_V100_V12)
     return 1050;
 #else
     return 2100;
@@ -139,4 +141,4 @@ const EPD_TimingConfig *epd_get_timing_config(void)
     return &timing_config;
 }
 
-#endif /*LCD_USING_EPD_YZC085_V100 || LCD_USING_EPD_YZC146_V100*/
+#endif /*LCD_USING_EPD_YZC085_V100 || LCD_USING_EPD_YZC146_V100 || LCD_USING_EPD_YZC085_V100_V12*/

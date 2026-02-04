@@ -13,7 +13,9 @@
 #include "bf0_pm.h"
 #include "epd_driver.h"
 #include "type.h"
+
 #include "UIRegionsManager.h"
+
 #undef LOG_TAG
 #undef DBG_LEVEL
 #define  DBG_LEVEL            DBG_LOG //DBG_INFO  //
@@ -84,7 +86,9 @@ typedef enum {
 } MainOption;
 void handleEpubTableContents(Renderer *renderer, UIAction action, bool needs_redraw);
 
+
 //阅读设置页面
+
 void handleEpub(Renderer *renderer, UIAction action)
 {
     if (!reader)

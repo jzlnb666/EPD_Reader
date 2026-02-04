@@ -13,7 +13,9 @@
 #include "../Renderer/Renderer.h"
 #include "epub_mem.h"
 #include "epub_screen.h"
+
 #include "UIRegionsManager.h"
+
 static const char *TAG = "EREADER";
 extern "C" rt_uint32_t heap_free_size(void);
 
@@ -142,6 +144,7 @@ void EpubReader::set_state_section(uint16_t current_section) {
 
 void EpubReader::render_overlay()
 {
+
   clear_areas(); // 清除之前的区域记录
 
   int page_w = renderer->get_page_width();
@@ -149,13 +152,17 @@ void EpubReader::render_overlay()
   int area_y = (page_h * 2) / 3;    // 覆盖下方 1/3 屏幕
   int area_h = page_h - area_y;
   
+
   renderer->fill_rect(0, area_y, page_w, area_h, 240);//绘制灰色背景
+
 
   // 三行布局：3,5,3
   const int rows = 3;
   const int cols[rows] = {3, 5, 3};
   const int gap_h = 20; // 行间距
+
   const int gap_w = 10; // 列间距
+
   const int row_h = 80; // 每行高度
   // 纵向居中放置三行
   int content_h = rows * row_h + (rows + 1) * gap_h;
@@ -217,6 +224,7 @@ void EpubReader::render_overlay()
       int w2 = usable_w - w0 - w1; 
       int widths[3] = { w0, w1, w2 };
       int cur_x = gap_w;
+
       //将坐标位置映射到触控中
       int first_one_x = cur_x;;
       int first_one_y = y;
@@ -261,6 +269,7 @@ void EpubReader::render_overlay()
     {
       int usable_w = page_w - (c + 1) * gap_w;
       int btn_w = usable_w / c;
+
       // 第二行触控区域映射（索引3-7）
       if (r == 1)  // 第二行
       {
@@ -285,6 +294,7 @@ void EpubReader::render_overlay()
               static_add_area(x, y_coord, btn_w, row_h, 8 + i);
           }
       }
+
       for (int i = 0; i < c; ++i)
       {
         int x = gap_w + i * (btn_w + gap_w);

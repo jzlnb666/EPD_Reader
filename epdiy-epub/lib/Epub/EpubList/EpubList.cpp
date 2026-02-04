@@ -219,6 +219,7 @@ void EpubList::render()
     if (!m_bottom_mode)
     {
       if (state.selected_item == i)
+
       {
         for (int line = 0; line < 5; line++)
         {
@@ -230,6 +231,7 @@ void EpubList::render()
     {
       if (state.selected_item == i)
       {
+
         // 擦除之前的黑色高亮边框
         for (int line = 0; line < 5; line++)
         {
@@ -298,4 +300,6 @@ void EpubList::render()
   int end_down_page_x = btn_w;
   int end_down_page_y = btn_h;
   static_add_area(start_down_page_x, start_down_page_y, end_down_page_x, end_down_page_y, 6);
+
+
 }
