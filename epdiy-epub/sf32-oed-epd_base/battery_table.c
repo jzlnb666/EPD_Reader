@@ -4,6 +4,7 @@
 // Discharging curve table
 const battery_lookup_point_t discharge_curve_table[] =
 {
+
     { 100,  41950},
     {  99,  41926},
     {  98,  41860},
@@ -427,4 +428,5 @@ const battery_lookup_point_t charging_curve_table[] =
 
 const uint32_t discharge_curve_table_size = sizeof(discharge_curve_table) / sizeof(discharge_curve_table[0]);
 const uint32_t charging_curve_table_size = sizeof(charging_curve_table) / sizeof(charging_curve_table[0]);
+
 
